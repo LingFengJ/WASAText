@@ -71,7 +71,6 @@ components:
 paths:
   /session:
     post:
-      tags: ["Authentication"]
       summary: Login or register user
       operationId: doLogin
       requestBody:
@@ -186,7 +185,6 @@ paths:
 
   /conversations/{conversationId}/messages:
     post:
-      tags: ["Messages"]
       summary: Send a new message
       operationId: sendMessage
       parameters:
@@ -218,7 +216,6 @@ paths:
 
   /messages/{messageId}:
     delete:
-      tags: ["Messages"]
       summary: Delete a message
       operationId: deleteMessage
       parameters:
@@ -234,7 +231,6 @@ paths:
 
   /messages/{messageId}/forward:
     post:
-      tags: ["Messages"]
       summary: Forward a message
       operationId: forwardMessage
       parameters:
@@ -260,7 +256,6 @@ paths:
 
   /messages/{messageId}/reactions:
     post:
-      tags: ["Messages"]
       summary: Add a reaction to a message
       operationId: commentMessage
       parameters:
@@ -284,7 +279,6 @@ paths:
           description: Reaction added successfully
 
     delete:
-      tags: ["Messages"]
       summary: Remove a reaction from a message
       operationId: uncommentMessage
       parameters:
@@ -300,7 +294,6 @@ paths:
 
   /groups/{groupId}/members:
     post:
-      tags: ["Groups"]
       summary: Add a user to a group
       operationId: addToGroup
       parameters:
@@ -325,7 +318,6 @@ paths:
 
   /groups/{groupId}/leave:
     post:
-      tags: ["Groups"]
       summary: Leave a group
       operationId: leaveGroup
       parameters:
@@ -341,7 +333,6 @@ paths:
 
   /groups/{groupId}/name:
     put:
-      tags: ["Groups"]
       summary: Update group name
       operationId: setGroupName
       parameters:
@@ -368,7 +359,6 @@ paths:
 
   /groups/{groupId}/photo:
     put:
-      tags: ["Groups"]
       summary: Update group photo
       operationId: setGroupPhoto
       parameters:
