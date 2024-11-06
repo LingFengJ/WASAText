@@ -1,0 +1,415 @@
+openapi: 3.0.3
+info:
+  title: WASAText API
+  description: |
+    API for WASAText messaging application that enables users to send messages,
+    create groups, and manage conversations.
+  version: 1.0.0
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: User identifier token received from login
+
+  schemas:
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        sender:
+          type: string
+        status:
+          type: string
+          enum: [sent, received, read]
+        type:
+          type: string
+          enum: [text, photo]
+        replyTo:
+          type: string
+          format: uuid
+          nullable: true
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        photo:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum: [individual, group]
+        lastMessage:
+          type: object
+          properties:
+            content:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            type:
+              type: string
+              enum: [text, photo]
+
+    Reaction:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        emoji:
+          type: string
+
+paths:
+  /session:
+    post:
+      tags: ["Authentication"]
+      summary: Login or register user
+      operationId: doLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 16
+                  pattern: '^.*?$'
+      responses:
+        '201':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identifier:
+                    type: string
+
+  /users/me/name:
+    put:
+      tags: ["User"]
+      summary: Update user's name
+      operationId: setMyUserName
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 16
+      responses:
+        '200':
+          description: Name updated successfully
+        '409':
+          description: Name already in use
+
+  /users/me/photo:
+    put:
+      tags: ["User"]
+      summary: Update user's profile photo
+      operationId: setMyPhoto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Photo updated successfully
+
+  /conversations:
+    get:
+      tags: ["Conversations"]
+      summary: Get user's conversations
+      operationId: getMyConversations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversationId}:
+    get:
+      tags: ["Conversations"]
+      summary: Get conversation details and messages
+      operationId: getConversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation details and messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+
+  /conversations/{conversationId}/messages:
+    post:
+      tags: ["Messages"]
+      summary: Send a new message
+      operationId: sendMessage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                type:
+                  type: string
+                  enum: [text, photo]
+                replyTo:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          description: Message sent successfully
+
+  /messages/{messageId}:
+    delete:
+      tags: ["Messages"]
+      summary: Delete a message
+      operationId: deleteMessage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message deleted successfully
+
+  /messages/{messageId}/forward:
+    post:
+      tags: ["Messages"]
+      summary: Forward a message
+      operationId: forwardMessage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                conversationId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Message forwarded successfully
+
+  /messages/{messageId}/reactions:
+    post:
+      tags: ["Messages"]
+      summary: Add a reaction to a message
+      operationId: commentMessage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emoji:
+                  type: string
+      responses:
+        '201':
+          description: Reaction added successfully
+
+    delete:
+      tags: ["Messages"]
+      summary: Remove a reaction from a message
+      operationId: uncommentMessage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reaction removed successfully
+
+  /groups/{groupId}/members:
+    post:
+      tags: ["Groups"]
+      summary: Add a user to a group
+      operationId: addToGroup
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: User added to group successfully
+
+  /groups/{groupId}/leave:
+    post:
+      tags: ["Groups"]
+      summary: Leave a group
+      operationId: leaveGroup
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully left the group
+
+  /groups/{groupId}/name:
+    put:
+      tags: ["Groups"]
+      summary: Update group name
+      operationId: setGroupName
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+      responses:
+        '200':
+          description: Group name updated successfully
+
+  /groups/{groupId}/photo:
+    put:
+      tags: ["Groups"]
+      summary: Update group photo
+      operationId: setGroupPhoto
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Group photo updated successfully
