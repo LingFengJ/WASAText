@@ -1,0 +1,380 @@
+openapi: 3.0.3
+info:
+  title: WASAText API
+  description: |
+    API for WASAText messaging application that enables users to send messages,
+    create groups, and manage conversations.
+  version: 1.0.0
+components:
+  schemas:
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        sender:
+          type: string
+        status:
+          type: string
+          enum: [sent, received, read]
+        type:
+          type: string
+          enum: [text, photo]
+        replyTo:
+          type: string
+          format: uuid
+          nullable: true
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        photo:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum: [individual, group]
+        lastMessage:
+          type: object
+          properties:
+            content:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            type:
+              type: string
+              enum: [text, photo]
+
+    Reaction:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        emoji:
+          type: string
+
+
+paths:
+  /session:
+    post:
+      summary: Login or register user
+      operationId: doLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 16
+                  pattern: '^.*?$'
+      responses:
+        '201':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identifier:
+                    type: string
+
+  /users/me/name:
+    put:
+      summary: Update user's name
+      description : |
+        update the name of myself (I'm not sure about the path
+        but using userId in the path seems that I can modify everyone's name)
+      operationId: setMyUserName
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 16
+      responses:
+        '200':
+          description: Name updated successfully
+        '409':
+          description: Name already in use
+
+  /users/me/photo:
+    put:
+      summary: Update user's profile photo
+      description: |
+        update my profile photo
+      operationId: setMyPhoto
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Photo updated successfully
+
+  /conversations:
+    get:
+      summary: Get user's conversations
+      description: |
+        get all existing conversations when logged in
+        (those with at least one message)
+      operationId: getMyConversations
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversationId}:
+    get:
+      summary: Get conversation details and messages
+      description: |
+        get into a conversation, so I want to see all past
+        messages reactions etc. 
+      operationId: getConversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation details and messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+
+  /conversations/{conversationId}/messages:
+    post:
+      summary: Send a new message
+      operationId: sendMessage
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                type:
+                  type: string
+                  enum: [text, photo]
+                replyTo:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          description: Message sent successfully
+
+  /messages/{messageId}:
+    delete:
+      summary: Delete a message
+      operationId: deleteMessage
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message deleted successfully
+
+  /messages/{messageId}/forward:
+    post:
+      summary: Forward a message
+      operationId: forwardMessage
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                conversationId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Message forwarded successfully
+
+  /messages/{messageId}/reactions:
+    post:
+      summary: Add a reaction to a message
+      operationId: commentMessage
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emoji:
+                  type: string
+      responses:
+        '201':
+          description: Reaction added successfully
+
+    delete:
+      summary: Remove a reaction from a message
+      operationId: uncommentMessage
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reaction removed successfully
+
+  /groups/{groupId}/members:
+    post:
+      summary: Add a user to a group
+      operationId: addToGroup
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: User added to group successfully
+
+  /groups/{groupId}/leave:
+    post:
+      summary: Leave a group
+      operationId: leaveGroup
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully left the group
+
+  /groups/{groupId}/name:
+    put:
+      summary: Update group name
+      operationId: setGroupName
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+      responses:
+        '200':
+          description: Group name updated successfully
+
+  /groups/{groupId}/photo:
+    put:
+      summary: Update group photo
+      operationId: setGroupPhoto
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Group photo updated successfully
