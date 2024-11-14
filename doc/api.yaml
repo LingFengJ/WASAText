@@ -1,132 +1,215 @@
 openapi: 3.0.3
 info:
   title: WASAText API
-  description: |
-    API for WASAText messaging application that enables users to send messages,
-    create groups, and manage conversations.
+  description: API for WASAText messaging application
   version: 1.0.0
 
+# Required tags array
+tags:
+  - name: Login
+    description: User authentication endpoints
+  - name: User
+    description: User management endpoints
+  - name: Conversations
+    description: Conversation management endpoints
+  - name: Messages
+    description: Message handling endpoints
+  - name: Groups
+    description: Group management endpoints
+
 components:
-  # Global authentication definition
   securitySchemes:
-    bearerAuth: # arbitrary name for the security scheme
+    bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT # optional, arbitrary value for documentation purposes
+      bearerFormat: JWT
 
   schemas:
+    Error:
+      description: Standard error response
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code identifier
+          pattern: '^[A-Z_]{1,50}$'
+          minLength: 1
+          maxLength: 50
+        message:
+          type: string
+          description: Human readable error message
+          pattern: '^.{1,200}$'
+          minLength: 1
+          maxLength: 200
+
     Message:
-      description: Represents a single message in a conversation
+      description: A message within a conversation
       type: object
       properties:
         id:
           type: string
+          description: Unique message identifier
           format: uuid
-          description: Unique identifier for the message
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
         content:
           type: string
-          description: Text content or URL for photo messages
+          description: Message content or photo URL
+          pattern: '^.{1,1000}$'
+          minLength: 1
+          maxLength: 1000
         timestamp:
           type: string
+          description: Message creation time
           format: date-time
-          description: When the message was sent
         sender:
           type: string
-          description: Username of message sender
+          description: Username of sender
+          pattern: '^[a-zA-Z0-9_]{3,16}$'
+          minLength: 3
+          maxLength: 16
         status:
           type: string
+          description: Message delivery status
           enum: [sent, received, read]
-          description: Delivery status of the message
         type:
           type: string
+          description: Content type of message
           enum: [text, photo]
-          description: Type of message content
-        replyTo:
-          type: string
-          format: uuid
-          nullable: true
-          description: ID of message being replied to
 
     Conversation:
-      description: Represents a conversation (private or group)
+      description: A conversation between users
       type: object
       properties:
         id:
           type: string
+          description: Unique conversation identifier
           format: uuid
-          description: Unique identifier for the conversation
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
         name:
           type: string
-          description: Display name for the conversation
-        photo:
-          type: string
-          format: uri
-          description: URL of conversation photo
+          description: Display name
+          pattern: '^.{1,50}$'
+          minLength: 1
+          maxLength: 50
         type:
           type: string
+          description: Conversation type
           enum: [individual, group]
-          description: Whether this is a private or group chat
         lastMessage:
           type: object
-          description: Preview of the most recent message
+          description: Most recent message preview
           properties:
             content:
               type: string
+              description: Message preview text
+              pattern: '^.{1,100}$'
+              minLength: 1
+              maxLength: 100
             timestamp:
               type: string
+              description: Message timestamp
               format: date-time
             type:
               type: string
+              description: Message type
               enum: [text, photo]
-
     Reaction:
-      description: Represents an emoji reaction to a message
+      description: An emoji reaction to a message
       type: object
       properties:
         userId:
           type: string
-          description: ID of user who reacted
+          description: User identifier who reacted
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
         username:
           type: string
-          description: Username of user who reacted
+          description: Username of reactor
+          pattern: '^[a-zA-Z0-9_]{3,16}$'
+          minLength: 3
+          maxLength: 16
         emoji:
           type: string
-          description: The emoji reaction
+          description: Emoji reaction
+          pattern: '/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g'
+          minLength: 1
+          maxLength: 2
+  parameters:
+    groupId:
+      name: groupId
+      in: path
+      description: Unique identifier of the group
+      required: true
+      schema:
+        description: Unique Identifier of the group
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+        minLength: 36
+        maxLength: 36
 
-# Apply authentication globally to all endpoints
 security:
   - bearerAuth: []
 
 paths:
   /session:
     post:
-      tags: ["Authentication"]
+      tags: ["Login"]
       summary: Login or register user
-      description: Creates new user or logs in existing user with given username
+      description: | 
+        Authenticate existing user 
+        If user does not exist, it will be created
+        and an identifier is returned
       operationId: doLogin
-      # Override global security - login doesn't need auth
       security: []
       requestBody:
+        description: User details
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
                 name:
                   type: string
+                  example: Maria
+                  description: Username for login
+                  pattern: '^[a-zA-Z0-9_]{3,16}$'
+                  # pattern: '^.*?$'
                   minLength: 3
                   maxLength: 16
-                  pattern: '^.*?$'
       responses:
         '201':
-          description: Login successful, returns user identifier for auth
-
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identifier:
+                    type: string
+                    description: Authentication token
+                    pattern: '^[A-Za-z0-9-_]{1,64}$'
+                    example: "abcdef012345"
+                    minLength: 1
+                    maxLength: 64
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /users/me/name:
     put:
-      tags: ["User"]
-      summary: Update user's name
-      description: Changes the authenticated user's display name
+      tags: ["User"]    # This tag is now being used
+      summary: Update username
+      description: Change authenticated user's display name
       operationId: setMyUserName
       requestBody:
         required: true
@@ -134,22 +217,40 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
                 name:
                   type: string
+                  description: New username
+                  pattern: '^[a-zA-Z0-9_]{3,16}$'
                   minLength: 3
                   maxLength: 16
       responses:
         '200':
           description: Name updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Updated username
+                    pattern: '^[a-zA-Z0-9_]{3,16}$'
+                    minLength: 3
+                    maxLength: 16
         '409':
-          description: Name already in use by another user
+          description: Name already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /users/me/photo:
     put:
-      tags: ["User"]
-      summary: Update user's profile photo
-      description: Changes the authenticated user's profile picture
+      tags: ["User"]  
+      summary: Update profile photo
+      description: Change authenticated user's profile picture
       operationId: setMyPhoto
       requestBody:
         required: true
@@ -158,240 +259,376 @@ paths:
             schema:
               type: string
               format: binary
+              description: New profile photo
       responses:
         '200':
           description: Photo updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photoUrl:
+                    type: string
+                    description: URL of updated photo
+                    pattern: '^https?://[^\s/$.?#].[^\s]*$'
+                    minLength: 1
+                    maxLength: 255
 
   /conversations:
     get:
-      tags: ["Conversations"]
-      summary: Get user's conversations
-      description: Returns list of all conversations the user is part of
+      tags: [Conversations]
+      summary: List user conversations
+      description: Get all conversations for authenticated user
       operationId: getMyConversations
       responses:
         '200':
-          description: List of conversations sorted by latest message
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /conversations/{conversationId}:
+    parameters:
+      - name: conversationId
+        in: path
+        description: Unique conversation identifier
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
     get:
-      tags: ["Conversations"]
-      summary: Get conversation details and messages
-      description: Returns conversation info and message history
+      tags: [Conversations]
+      summary: Get conversation details
+      description: Get conversation info and message history
       operationId: getConversation
-      parameters:
-        - name: conversationId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
-          description: Full conversation details with messages
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /conversations/{conversationId}/messages:
+    parameters:
+      - name: conversationId
+        in: path
+        description: Unique conversation identifier
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
     post:
-      tags: ["Messages"]
-      summary: Send a new message
-      description: Sends text or photo message to a conversation
+      tags: [Messages]
+      summary: Send message
+      description: Send new message to conversation
       operationId: sendMessage
-      parameters:
-        - name: conversationId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [content, type]
               properties:
                 content:
                   type: string
+                  description: Message content
+                  pattern: '^.{1,1000}$'
+                  minLength: 1
+                  maxLength: 1000
                 type:
                   type: string
+                  description: Message type
                   enum: [text, photo]
-                replyTo:
-                  type: string
-                  format: uuid
-                  nullable: true
       responses:
         '201':
-          description: Message sent successfully
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
+# -----------------------------
   /messages/{messageId}:
+    parameters:
+      - name: messageId
+        in: path
+        description: Unique identifier of the message
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
     delete:
       tags: ["Messages"]
       summary: Delete a message
       description: Removes a message sent by the authenticated user
       operationId: deleteMessage
-      parameters:
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: Message deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Delete operation result
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the deletion was successful
 
   /messages/{messageId}/forward:
+    parameters:
+      - name: messageId
+        in: path
+        description: Unique identifier of the message
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
     post:
       tags: ["Messages"]
       summary: Forward a message
       description: Forwards an existing message to another conversation
       operationId: forwardMessage
-      parameters:
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              description: Forward message request
+              required: [conversationId]
               properties:
                 conversationId:
                   type: string
+                  description: Target conversation identifier
                   format: uuid
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+                  minLength: 36
+                  maxLength: 36
       responses:
         '201':
           description: Message forwarded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
 
   /messages/{messageId}/reactions:
+    parameters:
+      - name: messageId
+        in: path
+        description: Unique identifier of the message
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 1
+          maxLength: 512
     post:
       tags: ["Messages"]
       summary: Add a reaction to a message
       description: Adds an emoji reaction to a message
       operationId: commentMessage
-      parameters:
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              description: Reaction details
+              required: [emoji]
               properties:
                 emoji:
                   type: string
+                  description: Emoji character to react with
+                  # pattern: '^[\x{1F300}-\x{1F9FF}]$'
+                  pattern: '/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g'
+                  minLength: 1
+                  maxLength: 2
       responses:
         '201':
           description: Reaction added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
 
     delete:
       tags: ["Messages"]
       summary: Remove a reaction from a message
       description: Removes user's emoji reaction from a message
       operationId: uncommentMessage
-      parameters:
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: Reaction removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Remove reaction result
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the reaction was removed
 
   /groups/{groupId}/members:
+    parameters:
+      - name: groupId
+        in: path
+        description: Unique identifier of the group
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          minLength: 36
+          maxLength: 36
     post:
       tags: ["Groups"]
       summary: Add a user to a group
       description: Adds new member to a group conversation
       operationId: addToGroup
-      parameters:
-        - name: groupId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              description: New member details
+              required: [userId]
               properties:
                 userId:
                   type: string
+                  description: Identifier of user to add
+                  format: uuid
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+                  minLength: 36
+                  maxLength: 36
       responses:
         '200':
           description: User added to group successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Add member result
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the user was added successfully
 
   /groups/{groupId}/leave:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
     post:
       tags: ["Groups"]
       summary: Leave a group
       description: Removes authenticated user from a group
       operationId: leaveGroup
-      parameters:
-        - name: groupId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: Successfully left the group
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Leave group result
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the user left successfully
 
   /groups/{groupId}/name:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
     put:
       tags: ["Groups"]
       summary: Update group name
       description: Changes the display name of a group
       operationId: setGroupName
-      parameters:
-        - name: groupId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              description: Group name update request
+              required: [name]
               properties:
                 name:
                   type: string
+                  description: New name for the group
+                  pattern: '^[^\n]{1,50}$'
                   minLength: 1
                   maxLength: 50
       responses:
         '200':
           description: Group name updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Updated group details
+                properties:
+                  name:
+                    type: string
+                    description: New group name
+                    pattern: '^[^\n]{1,50}$'
+                    minLength: 1
+                    maxLength: 50
 
   /groups/{groupId}/photo:
+    parameters:
+      - $ref: '#/components/parameters/groupId'
     put:
       tags: ["Groups"]
       summary: Update group photo
       description: Changes the photo of a group
       operationId: setGroupPhoto
-      parameters:
-        - name: groupId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -399,6 +636,19 @@ paths:
             schema:
               type: string
               format: binary
+              description: New photo for the group
       responses:
         '200':
           description: Group photo updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Updated photo details
+                properties:
+                  photoUrl:
+                    type: string
+                    description: URL of the updated photo
+                    pattern: '^https?://[^\s/$.?#].[^\s]*$'
+                    minLength: 1
+                    maxLength: 255
