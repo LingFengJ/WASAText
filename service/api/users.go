@@ -9,7 +9,7 @@ type UserNameUpdateRequest struct {
     Name string `json:"name"`
 }
 
-func (h *Handler) SetMyUserName(w http.ResponseWriter, r *http.Request) {
+func (h *_router) SetMyUserName(w http.ResponseWriter, r *http.Request) {
     var req UserNameUpdateRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
@@ -26,7 +26,7 @@ func (h *Handler) SetMyUserName(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]string{"name": req.Name})
 }
 
-func (h *Handler) SetMyPhoto(w http.ResponseWriter, r *http.Request) {
+func (h *_router) SetMyPhoto(w http.ResponseWriter, r *http.Request) {
     // TODO: Implement photo upload logic
     // 1. Parse multipart form
     // 2. Validate image

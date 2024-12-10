@@ -3,35 +3,49 @@ package api
 import (
     "encoding/json"
     "net/http"
+    "github.com/julienschmidt/httprouter"
 )
 
 type LoginRequest struct {
-    Name string `json:"name"`
+    Name     string `json:"name"`
+    Password string `json:"password"` // Added password field
 }
 
 type LoginResponse struct {
     Identifier string `json:"identifier"`
 }
 
-func DoLogin(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
     var req LoginRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
-    // Simple user check/creation logic
-    // In a real app, you'd want to store this in a database
-    existingUser := checkUserExists(req.Name)
-    if existingUser {
-        // User exists, generate identifier
-        identifier := generateIdentifier(req.Name)
-        sendLoginResponse(w, identifier)
+    // Check if user exists
+    exists, err := rt.db.CheckUserExists(req.Name)
+    if err != nil {
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
         return
     }
 
-    // New user, create and generate identifier
-    identifier := createNewUser(req.Name)
+    var identifier string
+    if exists {
+        // Try to login
+        identifier, err = rt.db.GetUserByCredentials(req.Name, req.Password)
+        if err != nil {
+            http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+            return
+        }
+    } else {
+        // Create new user
+        identifier, err = rt.db.CreateUser(req.Name, req.Password)
+        if err != nil {
+            http.Error(w, "Could not create user", http.StatusInternalServerError)
+            return
+        }
+    }
+
     sendLoginResponse(w, identifier)
 }
 

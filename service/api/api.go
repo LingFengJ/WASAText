@@ -1,43 +1,50 @@
+// service/api/api.go
 package api
 
 import (
-    "github.com/gorilla/mux"
-    "net/http"
+    "github.com/julienschmidt/httprouter"
+    "github.com/sirupsen/logrus"
+    "github.com/LingFengJ/WASAText/service/database"
+    "errors"
 )
 
-type Handler struct {
-    router *mux.Router
-    // Add any dependencies like database connection here
+type Config struct {
+    Logger   *logrus.Logger
+    Database database.AppDatabase
 }
 
-func NewHandler(router *mux.Router) *Handler {
-    return &Handler{
-        router: router,
+type _router struct {
+    router     *httprouter.Router
+    baseLogger *logrus.Logger
+    db         database.AppDatabase
+}
+
+// // New returns a new instance of the router
+// func NewRouter(logger *logrus.Logger) *_router {
+//     return &_router{
+//         router:     httprouter.New(),
+//         baseLogger: logger,
+//     }
+// }
+
+
+func New(cfg Config) (*_router, error) {
+    if cfg.Logger == nil {
+        return nil, errors.New("logger is required")
     }
-}
+    if cfg.Database == nil {
+        return nil, errors.New("database is required")
+    }
 
-func (h *Handler) RegisterRoutes() {
-    // Login routes
-    h.router.HandleFunc("/session", h.DoLogin).Methods(http.MethodPost)
+    rt := &_router{
+        router:     httprouter.New(),
+        baseLogger: cfg.Logger,
+        db:         cfg.Database,
+    }
 
-    // User routes
-    h.router.HandleFunc("/users/me/name", h.SetMyUserName).Methods(http.MethodPut)
-    h.router.HandleFunc("/users/me/photo", h.SetMyPhoto).Methods(http.MethodPut)
+    if err := cfg.Database.Ping(); err != nil {
+        return nil, errors.New("could not connect to database")
+    }
 
-    // Conversation routes
-    h.router.HandleFunc("/conversations", h.GetMyConversations).Methods(http.MethodGet)
-    h.router.HandleFunc("/conversations/{conversationId}", h.GetConversation).Methods(http.MethodGet)
-    h.router.HandleFunc("/conversations/{conversationId}/messages", h.SendMessage).Methods(http.MethodPost)
-
-    // Message routes
-    h.router.HandleFunc("/messages/{messageId}", h.DeleteMessage).Methods(http.MethodDelete)
-    h.router.HandleFunc("/messages/{messageId}/forward", h.ForwardMessage).Methods(http.MethodPost)
-    h.router.HandleFunc("/messages/{messageId}/reactions", h.CommentMessage).Methods(http.MethodPost)
-    h.router.HandleFunc("/messages/{messageId}/reactions", h.UncommentMessage).Methods(http.MethodDelete)
-
-    // Group routes
-    h.router.HandleFunc("/groups/{groupId}/leave", h.LeaveGroup).Methods(http.MethodPost)
-    h.router.HandleFunc("/groups/{groupId}/members", h.AddToGroup).Methods(http.MethodPost)
-    h.router.HandleFunc("/groups/{groupId}/name", h.SetGroupName).Methods(http.MethodPut)
-    h.router.HandleFunc("/groups/{groupId}/photo", h.SetGroupPhoto).Methods(http.MethodPut)
+    return rt, nil
 }
