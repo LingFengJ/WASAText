@@ -1,4 +1,3 @@
-// service/api/api.go
 package api
 
 import (

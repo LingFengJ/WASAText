@@ -44,28 +44,155 @@ type AppDatabase interface {
     CheckUserExists(username string) (bool, error)
     CreateUser(username string, password string) (string, error) // Returns identifier
     GetUserByCredentials(username string, password string) (string, error) // Returns identifier
+
+    // // Conversation management
+    GetUserConversations(userID string) ([]Conversation, error)
+    // GetConversation(conversationID string) (*Conversation, error)
+    // CreateConversation(conv *Conversation, members []string) error
+    // UpdateConversation(conv *Conversation) error
+    // DeleteConversation(conversationID string) error
+    
+    // // Conversation members
+    AddConversationMember(conversationID, userID string) error
+    RemoveConversationMember(conversationID, userID string) error
+    GetConversationMembers(conversationID string) ([]ConversationMember, error)
+    
+    // // Message management
+    // GetMessages(conversationID string, limit, offset int) ([]Message, error)
+    // CreateMessage(msg *Message) error
+    // UpdateMessage(msg *Message) error
+    // DeleteMessage(messageID string) error
+    
+    // // Message status
+    // UpdateMessageStatus(messageID, userID, status string) error
+    // GetMessageStatus(messageID string) ([]MessageStatus, error)
 }
 
 type appdbimpl struct {
     c *sql.DB
 }
 
+// func New(db *sql.DB) (AppDatabase, error) {
+//     if db == nil {
+//         return nil, errors.New("database is required when building a AppDatabase")
+//     }
+
+//     // Create users table if it doesn't exist
+//     sqlStmt := `CREATE TABLE IF NOT EXISTS users (
+//         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//         username TEXT UNIQUE NOT NULL,
+//         password TEXT NOT NULL,
+//         identifier TEXT UNIQUE NOT NULL
+//     );`
+    
+//     _, err := db.Exec(sqlStmt)
+//     if err != nil {
+//         return nil, fmt.Errorf("error creating database structure: %w", err)
+//     }
+
+//     return &appdbimpl{
+//         c: db,
+//     }, nil
+// }
+
+// Table creation statements
+const (
+    usersTableCreationStatement = `
+    CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        photo_url TEXT,
+        created_at TIMESTAMP NOT NULL,
+        modified_at TIMESTAMP NOT NULL
+    );`
+
+    conversationsTableCreationStatement = `
+    CREATE TABLE IF NOT EXISTS conversations (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL CHECK (type IN ('individual', 'group')),
+        name TEXT,
+        photo_url TEXT,
+        created_at TIMESTAMP NOT NULL,
+        modified_at TIMESTAMP NOT NULL
+    );`
+
+    conversationMembersTableCreationStatement = `
+    CREATE TABLE IF NOT EXISTS conversation_members (
+        conversation_id TEXT,
+        user_id TEXT,
+        joined_at TIMESTAMP NOT NULL,
+        last_read_at TIMESTAMP NOT NULL,
+        PRIMARY KEY (conversation_id, user_id),
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );`
+
+    messagesTableCreationStatement = `
+    CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        sender_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('text', 'photo')),
+        content TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('sent', 'received', 'read')),
+        timestamp TIMESTAMP NOT NULL,
+        reply_to_id TEXT,
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (reply_to_id) REFERENCES messages(id) ON DELETE SET NULL
+    );`
+
+    messageStatusTableCreationStatement = `
+    CREATE TABLE IF NOT EXISTS message_status (
+        message_id TEXT,
+        user_id TEXT,
+        status TEXT NOT NULL CHECK (status IN ('received', 'read')),
+        updated_at TIMESTAMP NOT NULL,
+        PRIMARY KEY (message_id, user_id),
+        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );`
+
+    reactionsTableCreationStatement = `
+    CREATE TABLE IF NOT EXISTS reactions (
+        message_id TEXT,
+        user_id TEXT,
+        emoji TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        PRIMARY KEY (message_id, user_id),
+        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );`
+)
+
 func New(db *sql.DB) (AppDatabase, error) {
     if db == nil {
         return nil, errors.New("database is required when building a AppDatabase")
     }
 
-    // Create users table if it doesn't exist
-    sqlStmt := `CREATE TABLE IF NOT EXISTS users (
-        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        identifier TEXT UNIQUE NOT NULL
-    );`
-    
-    _, err := db.Exec(sqlStmt)
-    if err != nil {
-        return nil, fmt.Errorf("error creating database structure: %w", err)
+    // Map of table names to their creation statements
+    tableMapping := map[string]string{
+        "users":               usersTableCreationStatement,
+        "conversations":       conversationsTableCreationStatement,
+        "conversation_members": conversationMembersTableCreationStatement,
+        "messages":            messagesTableCreationStatement,
+        "message_status":      messageStatusTableCreationStatement,
+        "reactions":           reactionsTableCreationStatement,
+    }
+
+    // Check if each table exists. If not, create it
+    for tableName, sqlStmt := range tableMapping {
+        err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, tableName).Scan(&tableName)
+
+        if errors.Is(err, sql.ErrNoRows) {
+            _, err = db.Exec(sqlStmt)
+            if err != nil {
+                return nil, fmt.Errorf("error creating database structure for table %s: %w", tableName, err)
+            }
+        } else if err != nil {
+            return nil, fmt.Errorf("error checking table %s existence: %w", tableName, err)
+        }
     }
 
     return &appdbimpl{

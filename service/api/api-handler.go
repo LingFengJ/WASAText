@@ -1,56 +1,40 @@
 package api
 
 import (
-    "net/http"
-    // "strings"
-    "github.com/julienschmidt/httprouter"
-    "github.com/LingFengJ/WASAText/service/database"
+	"net/http"
 )
-
-
-// type Handler struct {
-//     router *httprouter.Router
-//     db     database.AppDatabase
-// }
-
-// func NewHandler(db database.AppDatabase) *Handler {
-//     return &Handler{
-//         router: httprouter.New(),
-//         db:     db,
-//     }
-// }
 
 // Handler returns an instance of httprouter.Router that handles APIs registered here
 func (rt *_router) Handler() http.Handler {
-    // Login endpoints (no auth required)
-    h := rt
-    h.router.POST("/session", h.doLogin)
+	// Login endpoints (no auth required)
+	h := rt
+	h.router.POST("/session", h.doLogin)
 
-    // User endpoints
-    h.router.PUT("/users/me/name", h.wrap(h.setMyUserName))
-    h.router.PUT("/users/me/photo", h.wrap(h.setMyPhoto))
+	// User endpoints
+	h.router.PUT("/users/me/name", h.wrap(h.setMyUserName))
+	h.router.PUT("/users/me/photo", h.wrap(h.setMyPhoto))
 
-    // Conversation endpoints
-    h.router.GET("/conversations", h.wrap(h.getMyConversations))
-    h.router.GET("/conversations/:conversationId", h.wrap(h.getConversation))
-    h.router.POST("/conversations/:conversationId/messages", h.wrap(h.sendMessage))
+	// Conversation endpoints
+	h.router.GET("/conversations", h.wrap(h.getMyConversations))
+	h.router.GET("/conversations/:conversationId", h.wrap(h.getConversation))
+	h.router.POST("/conversations/:conversationId/messages", h.wrap(h.sendMessage))
 
-    // Message endpoints
-    h.router.DELETE("/messages/:messageId", h.wrap(h.deleteMessage))
-    h.router.POST("/messages/:messageId/forward", h.wrap(h.forwardMessage))
-    h.router.POST("/messages/:messageId/reactions", h.wrap(h.commentMessage))
-    h.router.DELETE("/messages/:messageId/reactions", h.wrap(h.uncommentMessage))
+	// Message endpoints
+	h.router.DELETE("/messages/:messageId", h.wrap(h.deleteMessage))
+	h.router.POST("/messages/:messageId/forward", h.wrap(h.forwardMessage))
+	h.router.POST("/messages/:messageId/reactions", h.wrap(h.commentMessage))
+	h.router.DELETE("/messages/:messageId/reactions", h.wrap(h.uncommentMessage))
 
-    // Group endpoints
-    h.router.POST("/groups/:groupId/leave", h.wrap(h.leaveGroup))
-    h.router.POST("/groups/:groupId/members", h.wrap(h.addToGroup))
-    h.router.PUT("/groups/:groupId/name", h.wrap(h.setGroupName))
-    h.router.PUT("/groups/:groupId/photo", h.wrap(h.setGroupPhoto))
+	// Group endpoints
+	h.router.POST("/groups/:groupId/leave", h.wrap(h.leaveGroup))
+	h.router.POST("/groups/:groupId/members", h.wrap(h.addToGroup))
+	h.router.PUT("/groups/:groupId/name", h.wrap(h.setGroupName))
+	h.router.PUT("/groups/:groupId/photo", h.wrap(h.setGroupPhoto))
 
-    // Special endpoints
-    h.router.GET("/liveness", h.liveness) 
+	// Special endpoints
+	h.router.GET("/liveness", h.liveness)
 
-    return h.router
+	return h.router
 }
 
 // // Custom type for context keys to avoid collisions
@@ -92,15 +76,10 @@ func (rt *_router) Handler() http.Handler {
 //     }
 // }
 
-// liveness is a basic health check endpoint
-func (h *Handler) liveness(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-    w.WriteHeader(http.StatusOK)
-}
 
-// GetUserID helper function to extract user ID from context
-func GetUserID(r *http.Request) string {
-    if userID, ok := r.Context().Value(UserIDKey).(string); ok {
-        return userID
-    }
-    return ""
-}
+// // liveness is a basic health check endpoint
+// func (h *_router) liveness(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// 	w.WriteHeader(http.StatusOK)
+// }
+
+
