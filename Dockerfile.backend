@@ -1,0 +1,26 @@
+FROM golang:1.17-bullseye AS builder  
+# Our base image
+
+# Set the Current Working Directory inside the container
+# and copy Go code to the Working Directory
+WORKDIR /src  
+COPY . .
+
+# Build the Go app in "builder" stage
+RUN go build -o /app/webapi ./cmd/webapi
+
+# Create final container
+FROM debian:bullseye
+# Inform Docker of the port the container listens on at runtime
+EXPOSE 3000
+
+# Copy executable from builder image
+WORKDIR /app
+COPY --from=builder /app/webapi .
+
+CMD ["/app/webapi"]
+
+# Build the Docker image using the following command
+# docker build -t WASATEXT-backend:latest -f Dockerfile.backend .
+# Run the Docker container using the following command
+# docker run -it --rm -p 3000:3000 WASATEXT-backend:latest
