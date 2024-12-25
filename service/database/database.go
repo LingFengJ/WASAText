@@ -102,6 +102,7 @@ const (
         id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        identifier TEXT UNIQUE NOT NULL,
         photo_url TEXT,
         created_at TIMESTAMP NOT NULL,
         modified_at TIMESTAMP NOT NULL

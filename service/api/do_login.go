@@ -25,6 +25,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
     // Check if user exists
     exists, err := rt.db.CheckUserExists(req.Name)
     if err != nil {
+        rt.baseLogger.WithError(err).Error("database error checking user existence")
         http.Error(w, "Internal server error", http.StatusInternalServerError)
         return
     }
@@ -34,6 +35,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
         // Try to login
         identifier, err = rt.db.GetUserByCredentials(req.Name, req.Password)
         if err != nil {
+            rt.baseLogger.WithError(err).Error("error getting user credentials")
             http.Error(w, "Invalid credentials", http.StatusUnauthorized)
             return
         }
@@ -41,7 +43,8 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
         // Create new user
         identifier, err = rt.db.CreateUser(req.Name, req.Password)
         if err != nil {
-            http.Error(w, "Could not create user", http.StatusInternalServerError)
+            rt.baseLogger.WithError(err).Error("error creating user")
+            http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         }
     }
