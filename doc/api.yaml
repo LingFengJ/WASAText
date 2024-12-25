@@ -575,8 +575,16 @@ paths:
                   minLength: 3
                   pattern: ^[a-zA-Z0-9_]{3,16}$
                   type: string
+                password:
+                  description: Password for login
+                  example: password123
+                  maxLength: 100
+                  minLength: 4
+                  pattern: ^.{8,100}$
+                  type: string
               required:
               - name
+              - password
               type: object
         description: User details
         required: true
