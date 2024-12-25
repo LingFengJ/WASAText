@@ -24,17 +24,17 @@ go build .
 
 2. Make sure your project has the correct directory structure and all files are committed and pushed to GitHub:
 
-WASAText/
-├── go.mod
-├── go.sum
-├── README.md
-├── service/
-│   ├── api/
-│   │   ├── reqcontext/
-│   │   │   └── reqcontext.go
-│   │   └── api.go
-│   ├── database/
-│   └── globaltime/
-└── cmd/
-└── webapi/
-└── main.go
+WASAText/  
+├── go.mod  
+├── go.sum  
+├── README.md  
+├── service/  
+│   ├── api/  
+│   │   ├── reqcontext/  
+│   │   │   └── reqcontext.go  
+│   │   └── api.go  
+│   ├── database/  
+│   └── globaltime/  
+└── cmd/  
+└── webapi/   
+└── main.go    
