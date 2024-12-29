@@ -44,13 +44,18 @@ type AppDatabase interface {
     CheckUserExists(username string) (bool, error)
     CreateUser(username string, password string) (string, error) // Returns identifier
     GetUserByCredentials(username string, password string) (string, error) // Returns identifier
+    GetUserIDFromIdentifier(identifier string) (string, error)
+
+    // User profile management
+    UpdateUsername(userID string, newUsername string) error
+    UpdateUserPhoto(userID string, filename string, imageData []byte) (string, error)
 
     // // Conversation management
     GetUserConversations(userID string) ([]Conversation, error)
-    // GetConversation(conversationID string) (*Conversation, error)
-    // CreateConversation(conv *Conversation, members []string) error
-    // UpdateConversation(conv *Conversation) error
-    // DeleteConversation(conversationID string) error
+    GetConversation(conversationID string) (*Conversation, error)
+    CreateConversation(conv *Conversation, members []string) error
+    UpdateConversation(conv *Conversation) error
+    DeleteConversation(conversationID string) error
     
     // // Conversation members
     AddConversationMember(conversationID, userID string) error
@@ -58,42 +63,19 @@ type AppDatabase interface {
     GetConversationMembers(conversationID string) ([]ConversationMember, error)
     
     // // Message management
-    // GetMessages(conversationID string, limit, offset int) ([]Message, error)
-    // CreateMessage(msg *Message) error
-    // UpdateMessage(msg *Message) error
-    // DeleteMessage(messageID string) error
+    GetMessages(conversationID string, limit, offset int) ([]Message, error)
+    CreateMessage(msg *Message) error
+    UpdateMessage(msg *Message) error
+    DeleteMessage(messageID string) error
     
     // // Message status
-    // UpdateMessageStatus(messageID, userID, status string) error
-    // GetMessageStatus(messageID string) ([]MessageStatus, error)
+    UpdateMessageStatus(messageID, userID, status string) error
+    GetMessageStatus(messageID string) ([]MessageStatus, error)
 }
 
 type appdbimpl struct {
     c *sql.DB
 }
-
-// func New(db *sql.DB) (AppDatabase, error) {
-//     if db == nil {
-//         return nil, errors.New("database is required when building a AppDatabase")
-//     }
-
-//     // Create users table if it doesn't exist
-//     sqlStmt := `CREATE TABLE IF NOT EXISTS users (
-//         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-//         username TEXT UNIQUE NOT NULL,
-//         password TEXT NOT NULL,
-//         identifier TEXT UNIQUE NOT NULL
-//     );`
-    
-//     _, err := db.Exec(sqlStmt)
-//     if err != nil {
-//         return nil, fmt.Errorf("error creating database structure: %w", err)
-//     }
-
-//     return &appdbimpl{
-//         c: db,
-//     }, nil
-// }
 
 // Table creation statements
 const (
