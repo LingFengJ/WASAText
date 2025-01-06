@@ -45,6 +45,7 @@ type AppDatabase interface {
     CreateUser(username string, password string) (string, error) // Returns identifier
     GetUserByCredentials(username string, password string) (string, error) // Returns identifier
     GetUserIDFromIdentifier(identifier string) (string, error)
+    GetUserIDByUsername(username string) (string, error)
 
     // User profile management
     UpdateUsername(userID string, newUsername string) error
@@ -56,6 +57,8 @@ type AppDatabase interface {
     CreateConversation(conv *Conversation, members []string) error
     UpdateConversation(conv *Conversation) error
     DeleteConversation(conversationID string) error
+    HasRemainingMessages(conversationID string) (bool, error)
+    UpdateGroupPhoto(conversationID, filename string, imageData []byte) (string, error)
     
     // // Conversation members
     AddConversationMember(conversationID, userID string) error
@@ -64,9 +67,12 @@ type AppDatabase interface {
     
     // // Message management
     GetMessages(conversationID string, limit, offset int) ([]Message, error)
+    GetMessage(messageID string) (*Message, error)
     CreateMessage(msg *Message) error
     UpdateMessage(msg *Message) error
     DeleteMessage(messageID string) error
+    AddReaction(messageID, userID, emoji string) error
+    RemoveReaction(messageID, userID string) error
     
     // // Message status
     UpdateMessageStatus(messageID, userID, status string) error

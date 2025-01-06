@@ -13,12 +13,16 @@ func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, erro
             c.photo_url,
             c.created_at,
             c.modified_at,
-            m.content as last_message_content,
+            m.id as last_message_id,
+            m.conversation_id as last_message_conv_id,
+            m.sender_id as last_message_sender_id,
             m.type as last_message_type,
+            m.content as last_message_content,
+            m.status as last_message_status,
             m.timestamp as last_message_time
         FROM conversations c
         LEFT JOIN (
-            SELECT conversation_id, content, type, timestamp
+            SELECT *
             FROM messages
             WHERE (conversation_id, timestamp) IN (
                 SELECT conversation_id, MAX(timestamp)
@@ -29,7 +33,7 @@ func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, erro
         WHERE c.id = ?`
 
     var conv Conversation
-    var msgContent, msgType sql.NullString
+    var msgID, msgConvID, msgSenderID, msgType, msgContent, msgStatus sql.NullString
     var msgTimestamp sql.NullTime
 
     err := db.c.QueryRow(query, conversationID).Scan(
@@ -39,8 +43,12 @@ func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, erro
         &conv.PhotoURL,
         &conv.CreatedAt,
         &conv.ModifiedAt,
-        &msgContent,
+        &msgID,
+        &msgConvID,
+        &msgSenderID,
         &msgType,
+        &msgContent,
+        &msgStatus,
         &msgTimestamp,
     )
 
@@ -51,12 +59,16 @@ func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, erro
         return nil, ErrDatabaseError
     }
 
-    // If there's a last message, attach it
+    // If there's a last message, attach it with all fields
     if msgContent.Valid && msgType.Valid && msgTimestamp.Valid {
         conv.LastMessage = &Message{
-            Content:   msgContent.String,
-            Type:     msgType.String,
-            Timestamp: msgTimestamp.Time,
+            ID:             msgID.String,
+            ConversationID: msgConvID.String,
+            SenderID:       msgSenderID.String,
+            Type:          msgType.String,
+            Content:       msgContent.String,
+            Status:        msgStatus.String,
+            Timestamp:     msgTimestamp.Time,
         }
     }
 
