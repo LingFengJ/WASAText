@@ -27,7 +27,7 @@ import (
 
 func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
     // Get user ID from context
-    userID, err := rt.GetUserID(ctx)
+    userID, err := GetUserIDFromContext(ctx)
     if err != nil {
         http.Error(w, err.Error(), http.StatusUnauthorized)
         return
@@ -43,10 +43,18 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
         switch err {
         case database.ErrUserNotFound:
             http.Error(w, "User not found", http.StatusNotFound)
+        case database.ErrDatabaseError:
+            http.Error(w, "Database error", http.StatusInternalServerError)
         default:
             http.Error(w, "Internal server error", http.StatusInternalServerError)
         }
         return
+    }
+
+
+    // If no conversations, return empty array instead of null
+    if conversations == nil {
+        conversations = []database.Conversation{}
     }
 
     // Send response
@@ -56,5 +64,5 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
         http.Error(w, "Internal server error", http.StatusInternalServerError)
         return
     }
-    json.NewEncoder(w).Encode(conversations)
+    // json.NewEncoder(w).Encode(conversations)
 }

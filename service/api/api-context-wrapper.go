@@ -36,16 +36,25 @@ func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Re
             return
         }
 
-        userID, err := rt.authenticate(r)
+        identifier, err := rt.extractToken(r)
         if err != nil {
             rt.baseLogger.WithError(err).Warn("authentication failed")
             http.Error(w, err.Error(), http.StatusUnauthorized)
             return
         }
 
+        // Get user ID from identifier
+        userID, err := rt.db.GetUserIDFromIdentifier(identifier)
+        if err != nil {
+            rt.baseLogger.WithError(err).Warn("invalid identifier")
+            http.Error(w, "Invalid authentication token", http.StatusUnauthorized)
+            return
+        }
+
         var ctx = reqcontext.RequestContext{
             ReqUUID: reqUUID,
             UserID:  userID,
+            Identifier: identifier,
         }
 
         ctx.Logger = rt.baseLogger.WithFields(logrus.Fields{
@@ -58,8 +67,9 @@ func (rt *_router) wrap(fn httpRouterHandler) func(http.ResponseWriter, *http.Re
     }
 }
 
-// authenticate checks the Authorization header and returns the user ID
-func (rt *_router) authenticate(r *http.Request) (string, error) {
+// // authenticate checks the Authorization header and returns the user ID
+// extractToken gets the token from the Authorization header
+func (rt *_router) extractToken(r *http.Request) (string, error) {
     authHeader := r.Header.Get("Authorization")
     if authHeader == "" {
         return "", ErrNoAuthHeader

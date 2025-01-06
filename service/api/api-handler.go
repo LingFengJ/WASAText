@@ -16,7 +16,9 @@ func (rt *_router) Handler() http.Handler {
 
 	// Conversation endpoints
 	h.router.GET("/conversations", h.wrap(h.getMyConversations))
+	h.router.POST("/start-conversation", h.wrap(h.startConversation)) // Optional endpoint for UI
 	h.router.GET("/conversations/:conversationId", h.wrap(h.getConversation))
+	// h.router.POST("/conversations/messages", h.wrap(h.sendMessage))  // For first message (no conversation ID)
 	h.router.POST("/conversations/:conversationId/messages", h.wrap(h.sendMessage))
 
 	// Message endpoints
