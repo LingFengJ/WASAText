@@ -243,7 +243,7 @@ paths:
         pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
         type: string
     post:
-      description: Send new message to conversation
+      description: Send new message to conversation, if no conversationId is provided, create a new conversation
       operationId: sendMessage
       requestBody:
         content:
@@ -253,7 +253,7 @@ paths:
               properties:
                 content:
                   description: Message content
-                  maxLength: 1000
+                  maxLength: 10000000
                   minLength: 1
                   pattern: ^.{1,1000}$
                   type: string
@@ -263,6 +263,28 @@ paths:
                   - text
                   - photo
                   type: string
+                recipientName:
+                  description: Username of recipient (required only for first message in new individual chat)
+                  type: string
+                  minLength: 3
+                  maxLength: 32
+                  pattern: ^[a-zA-Z0-9_]{3,16}$
+                groupName:
+                  description: Group name (required only for creating new group chat)
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                  pattern: ^[^\n]{1,50}$
+                members:
+                  description: List of usernames to add to group (required only for creating new group chat)
+                  type: array
+                  minItems: 2
+                  maxItems: 100
+                  items:
+                    type: string
+                    minLength: 3
+                    maxLength: 32
+                    pattern: ^[a-zA-Z0-9_]{3,16}$
               required:
               - content
               - type
