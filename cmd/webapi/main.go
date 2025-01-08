@@ -80,6 +80,11 @@ func run() error {
 
 	logger.Infof("application initializing")
 
+	// if err := os.MkdirAll("data", 0755); err != nil {
+	// 	logger.WithError(err).Error("error creating data directory")
+	// 	return fmt.Errorf("creating data directory: %w", err)
+	// }
+
 	// Start Database
 	logger.Println("initializing database support")
 	dbconn, err := sql.Open("sqlite3", cfg.DB.Filename)
@@ -96,7 +101,6 @@ func run() error {
 		logger.WithError(err).Error("error creating AppDatabase")
 		return fmt.Errorf("creating AppDatabase: %w", err)
 	}
-
 
 	// Start (main) API server
 	logger.Info("initializing API server")
