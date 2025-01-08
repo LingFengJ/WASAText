@@ -1,28 +1,29 @@
 package database
 
 import (
-    "time"
+	"time"
 )
 
 // User represents a user in the system
 type User struct {
-    ID         string    `json:"id"`
-    Username   string    `json:"username"`
-    PhotoURL   string    `json:"photoUrl,omitempty"`
-    CreatedAt  time.Time `json:"createdAt"`
-    ModifiedAt time.Time `json:"modifiedAt"`
+	ID         string    `json:"id"`
+	Username   string    `json:"username"`
+	PhotoURL   string    `json:"photoUrl,omitempty"`
+	CreatedAt  time.Time `json:"createdAt"`
+	ModifiedAt time.Time `json:"modifiedAt"`
 }
 
 // Conversation represents a chat conversation (individual or group)
 type Conversation struct {
-    ID          string    `json:"id"`
-    Type        string    `json:"type"` // "individual" or "group"
-    Name        string    `json:"name,omitempty"`
-    PhotoURL    string    `json:"photoUrl,omitempty"`
-    CreatedAt   time.Time `json:"createdAt"`
-    ModifiedAt  time.Time `json:"modifiedAt"`
-    LastMessage *Message  `json:"lastMessage,omitempty"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"` // "individual" or "group"
+	Name        string    `json:"name,omitempty"`
+	PhotoURL    string    `json:"photoUrl,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ModifiedAt  time.Time `json:"modifiedAt"`
+	LastMessage *Message  `json:"lastMessage,omitempty"`
 }
+
 // type Conversation struct {
 //     ID      string   `json:"id"`
 //     Members []string `json:"members"`
@@ -31,37 +32,37 @@ type Conversation struct {
 
 // Message represents a chat message
 type Message struct {
-    ID           string    `json:"id"`
-    ConversationID string  `json:"conversationId"`
-    SenderID     string    `json:"senderId"`
-    Type         string    `json:"type"` // "text" or "photo"
-    Content      string    `json:"content"`
-    Status       string    `json:"status"` // "sent", "received", or "read"
-    Timestamp    time.Time `json:"timestamp"`
-    ReplyToID    string    `json:"replyToId,omitempty"`
+	ID             string    `json:"id"`
+	ConversationID string    `json:"conversationId"`
+	SenderID       string    `json:"senderId"`
+	Type           string    `json:"type"` // "text" or "photo"
+	Content        string    `json:"content"`
+	Status         string    `json:"status"` // "sent", "received", or "read"
+	Timestamp      time.Time `json:"timestamp"`
+	ReplyToID      string    `json:"replyToId,omitempty"`
 }
 
 // Reaction represents an emoji reaction to a message
 type Reaction struct {
-    MessageID   string    `json:"messageId"`
-    UserID      string    `json:"userId"`
-    Username    string    `json:"username"`
-    Emoji       string    `json:"emoji"`
-    CreatedAt   time.Time `json:"createdAt"`
+	MessageID string    `json:"messageId"`
+	UserID    string    `json:"userId"`
+	Username  string    `json:"username"`
+	Emoji     string    `json:"emoji"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // ConversationMember represents a user's membership in a conversation
 type ConversationMember struct {
-    ConversationID string    `json:"conversationId"`
-    UserID         string    `json:"userId"`
-    JoinedAt       time.Time `json:"joinedAt"`
-    LastReadAt     time.Time `json:"lastReadAt"`
+	ConversationID string    `json:"conversationId"`
+	UserID         string    `json:"userId"`
+	JoinedAt       time.Time `json:"joinedAt"`
+	LastReadAt     time.Time `json:"lastReadAt"`
 }
 
 // MessageStatus tracks message delivery status per recipient
 type MessageStatus struct {
-    MessageID     string    `json:"messageId"`
-    UserID        string    `json:"userId"`
-    Status        string    `json:"status"` // "received" or "read"
-    UpdatedAt     time.Time `json:"updatedAt"`
+	MessageID string    `json:"messageId"`
+	UserID    string    `json:"userId"`
+	Status    string    `json:"status"` // "received" or "read"
+	UpdatedAt time.Time `json:"updatedAt"`
 }

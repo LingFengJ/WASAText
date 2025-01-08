@@ -1,11 +1,11 @@
 package database
 
 import (
-    "database/sql"
+	"database/sql"
 )
 
 func (db *appdbimpl) GetMessages(conversationID string, limit, offset int) ([]Message, error) {
-    query := `
+	query := `
         SELECT 
             m.id,
             m.conversation_id,
@@ -20,41 +20,41 @@ func (db *appdbimpl) GetMessages(conversationID string, limit, offset int) ([]Me
         ORDER BY m.timestamp DESC
         LIMIT $2 OFFSET $3`
 
-    rows, err := db.c.Query(query, conversationID, limit, offset)
-    if err != nil {
-        return nil, ErrDatabaseError
-    }
-    defer rows.Close()
+	rows, err := db.c.Query(query, conversationID, limit, offset)
+	if err != nil {
+		return nil, ErrDatabaseError
+	}
+	defer rows.Close()
 
-    var messages []Message
-    for rows.Next() {
-        var msg Message
-        var replyToID sql.NullString // For handling nullable reply_to_id
-        
-        err := rows.Scan(
-            &msg.ID,
-            &msg.ConversationID,
-            &msg.SenderID,
-            &msg.Type,
-            &msg.Content,
-            &msg.Status,
-            &msg.Timestamp,
-            &replyToID,
-        )
-        if err != nil {
-            return nil, ErrDatabaseError
-        }
+	var messages []Message
+	for rows.Next() {
+		var msg Message
+		var replyToID sql.NullString // For handling nullable reply_to_id
 
-        if replyToID.Valid {
-            msg.ReplyToID = replyToID.String
-        }
+		err := rows.Scan(
+			&msg.ID,
+			&msg.ConversationID,
+			&msg.SenderID,
+			&msg.Type,
+			&msg.Content,
+			&msg.Status,
+			&msg.Timestamp,
+			&replyToID,
+		)
+		if err != nil {
+			return nil, ErrDatabaseError
+		}
 
-        messages = append(messages, msg)
-    }
+		if replyToID.Valid {
+			msg.ReplyToID = replyToID.String
+		}
 
-    if err = rows.Err(); err != nil {
-        return nil, ErrDatabaseError
-    }
+		messages = append(messages, msg)
+	}
 
-    return messages, nil
+	if err = rows.Err(); err != nil {
+		return nil, ErrDatabaseError
+	}
+
+	return messages, nil
 }

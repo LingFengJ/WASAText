@@ -36,56 +36,55 @@ import (
 	"fmt"
 )
 
-
 type AppDatabase interface {
-    Ping() error
-    
-    // User management
-    CheckUserExists(username string) (bool, error)
-    CreateUser(username string, password string) (string, error) // Returns identifier
-    GetUserByCredentials(username string, password string) (string, error) // Returns identifier
-    GetUserIDFromIdentifier(identifier string) (string, error)
-    GetUserIDByUsername(username string) (string, error)
+	Ping() error
 
-    // User profile management
-    UpdateUsername(userID string, newUsername string) error
-    UpdateUserPhoto(userID string, filename string, imageData []byte) (string, error)
+	// User management
+	CheckUserExists(username string) (bool, error)
+	CreateUser(username string, password string) (string, error)           // Returns identifier
+	GetUserByCredentials(username string, password string) (string, error) // Returns identifier
+	GetUserIDFromIdentifier(identifier string) (string, error)
+	GetUserIDByUsername(username string) (string, error)
 
-    // // Conversation management
-    GetUserConversations(userID string) ([]Conversation, error)
-    GetConversation(conversationID string) (*Conversation, error)
-    CreateConversation(conv *Conversation, members []string) error
-    UpdateConversation(conv *Conversation) error
-    DeleteConversation(conversationID string) error
-    HasRemainingMessages(conversationID string) (bool, error)
-    UpdateGroupPhoto(conversationID, filename string, imageData []byte) (string, error)
-    
-    // // Conversation members
-    AddConversationMember(conversationID, userID string) error
-    RemoveConversationMember(conversationID, userID string) error
-    GetConversationMembers(conversationID string) ([]ConversationMember, error)
-    
-    // // Message management
-    GetMessages(conversationID string, limit, offset int) ([]Message, error)
-    GetMessage(messageID string) (*Message, error)
-    CreateMessage(msg *Message) error
-    UpdateMessage(msg *Message) error
-    DeleteMessage(messageID string) error
-    AddReaction(messageID, userID, emoji string) error
-    RemoveReaction(messageID, userID string) error
-    
-    // // Message status
-    UpdateMessageStatus(messageID, userID, status string) error
-    GetMessageStatus(messageID string) ([]MessageStatus, error)
+	// User profile management
+	UpdateUsername(userID string, newUsername string) error
+	UpdateUserPhoto(userID string, filename string, imageData []byte) (string, error)
+
+	// // Conversation management
+	GetUserConversations(userID string) ([]Conversation, error)
+	GetConversation(conversationID string) (*Conversation, error)
+	CreateConversation(conv *Conversation, members []string) error
+	UpdateConversation(conv *Conversation) error
+	DeleteConversation(conversationID string) error
+	HasRemainingMessages(conversationID string) (bool, error)
+	UpdateGroupPhoto(conversationID, filename string, imageData []byte) (string, error)
+
+	// // Conversation members
+	AddConversationMember(conversationID, userID string) error
+	RemoveConversationMember(conversationID, userID string) error
+	GetConversationMembers(conversationID string) ([]ConversationMember, error)
+
+	// // Message management
+	GetMessages(conversationID string, limit, offset int) ([]Message, error)
+	GetMessage(messageID string) (*Message, error)
+	CreateMessage(msg *Message) error
+	UpdateMessage(msg *Message) error
+	DeleteMessage(messageID string) error
+	AddReaction(messageID, userID, emoji string) error
+	RemoveReaction(messageID, userID string) error
+
+	// // Message status
+	UpdateMessageStatus(messageID, userID, status string) error
+	GetMessageStatus(messageID string) ([]MessageStatus, error)
 }
 
 type appdbimpl struct {
-    c *sql.DB
+	c *sql.DB
 }
 
 // Table creation statements
 const (
-    usersTableCreationStatement = `
+	usersTableCreationStatement = `
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
@@ -96,7 +95,7 @@ const (
         modified_at TIMESTAMP NOT NULL
     );`
 
-    conversationsTableCreationStatement = `
+	conversationsTableCreationStatement = `
     CREATE TABLE IF NOT EXISTS conversations (
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL CHECK (type IN ('individual', 'group')),
@@ -106,7 +105,7 @@ const (
         modified_at TIMESTAMP NOT NULL
     );`
 
-    conversationMembersTableCreationStatement = `
+	conversationMembersTableCreationStatement = `
     CREATE TABLE IF NOT EXISTS conversation_members (
         conversation_id TEXT,
         user_id TEXT,
@@ -117,7 +116,7 @@ const (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );`
 
-    messagesTableCreationStatement = `
+	messagesTableCreationStatement = `
     CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         conversation_id TEXT NOT NULL,
@@ -132,7 +131,7 @@ const (
         FOREIGN KEY (reply_to_id) REFERENCES messages(id) ON DELETE SET NULL
     );`
 
-    messageStatusTableCreationStatement = `
+	messageStatusTableCreationStatement = `
     CREATE TABLE IF NOT EXISTS message_status (
         message_id TEXT,
         user_id TEXT,
@@ -143,7 +142,7 @@ const (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );`
 
-    reactionsTableCreationStatement = `
+	reactionsTableCreationStatement = `
     CREATE TABLE IF NOT EXISTS reactions (
         message_id TEXT,
         user_id TEXT,
@@ -156,39 +155,39 @@ const (
 )
 
 func New(db *sql.DB) (AppDatabase, error) {
-    if db == nil {
-        return nil, errors.New("database is required when building a AppDatabase")
-    }
+	if db == nil {
+		return nil, errors.New("database is required when building a AppDatabase")
+	}
 
-    // Map of table names to their creation statements
-    tableMapping := map[string]string{
-        "users":               usersTableCreationStatement,
-        "conversations":       conversationsTableCreationStatement,
-        "conversation_members": conversationMembersTableCreationStatement,
-        "messages":            messagesTableCreationStatement,
-        "message_status":      messageStatusTableCreationStatement,
-        "reactions":           reactionsTableCreationStatement,
-    }
+	// Map of table names to their creation statements
+	tableMapping := map[string]string{
+		"users":                usersTableCreationStatement,
+		"conversations":        conversationsTableCreationStatement,
+		"conversation_members": conversationMembersTableCreationStatement,
+		"messages":             messagesTableCreationStatement,
+		"message_status":       messageStatusTableCreationStatement,
+		"reactions":            reactionsTableCreationStatement,
+	}
 
-    // Check if each table exists. If not, create it
-    for tableName, sqlStmt := range tableMapping {
-        err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, tableName).Scan(&tableName)
+	// Check if each table exists. If not, create it
+	for tableName, sqlStmt := range tableMapping {
+		err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, tableName).Scan(&tableName)
 
-        if errors.Is(err, sql.ErrNoRows) {
-            _, err = db.Exec(sqlStmt)
-            if err != nil {
-                return nil, fmt.Errorf("error creating database structure for table %s: %w", tableName, err)
-            }
-        } else if err != nil {
-            return nil, fmt.Errorf("error checking table %s existence: %w", tableName, err)
-        }
-    }
+		if errors.Is(err, sql.ErrNoRows) {
+			_, err = db.Exec(sqlStmt)
+			if err != nil {
+				return nil, fmt.Errorf("error creating database structure for table %s: %w", tableName, err)
+			}
+		} else if err != nil {
+			return nil, fmt.Errorf("error checking table %s existence: %w", tableName, err)
+		}
+	}
 
-    return &appdbimpl{
-        c: db,
-    }, nil
+	return &appdbimpl{
+		c: db,
+	}, nil
 }
 
 func (db *appdbimpl) Ping() error {
-    return db.c.Ping()
+	return db.c.Ping()
 }

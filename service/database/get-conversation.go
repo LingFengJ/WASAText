@@ -5,7 +5,7 @@ import (
 )
 
 func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, error) {
-    query := `
+	query := `
         SELECT 
             c.id,
             c.type,
@@ -32,45 +32,45 @@ func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, erro
         ) m ON c.id = m.conversation_id
         WHERE c.id = ?`
 
-    var conv Conversation
-    var msgID, msgConvID, msgSenderID, msgType, msgContent, msgStatus sql.NullString
-    var msgTimestamp sql.NullTime
+	var conv Conversation
+	var msgID, msgConvID, msgSenderID, msgType, msgContent, msgStatus sql.NullString
+	var msgTimestamp sql.NullTime
 
-    err := db.c.QueryRow(query, conversationID).Scan(
-        &conv.ID,
-        &conv.Type,
-        &conv.Name,
-        &conv.PhotoURL,
-        &conv.CreatedAt,
-        &conv.ModifiedAt,
-        &msgID,
-        &msgConvID,
-        &msgSenderID,
-        &msgType,
-        &msgContent,
-        &msgStatus,
-        &msgTimestamp,
-    )
+	err := db.c.QueryRow(query, conversationID).Scan(
+		&conv.ID,
+		&conv.Type,
+		&conv.Name,
+		&conv.PhotoURL,
+		&conv.CreatedAt,
+		&conv.ModifiedAt,
+		&msgID,
+		&msgConvID,
+		&msgSenderID,
+		&msgType,
+		&msgContent,
+		&msgStatus,
+		&msgTimestamp,
+	)
 
-    if err == sql.ErrNoRows {
-        return nil, ErrConversationNotFound
-    }
-    if err != nil {
-        return nil, ErrDatabaseError
-    }
+	if err == sql.ErrNoRows {
+		return nil, ErrConversationNotFound
+	}
+	if err != nil {
+		return nil, ErrDatabaseError
+	}
 
-    // If there's a last message, attach it with all fields
-    if msgContent.Valid && msgType.Valid && msgTimestamp.Valid {
-        conv.LastMessage = &Message{
-            ID:             msgID.String,
-            ConversationID: msgConvID.String,
-            SenderID:       msgSenderID.String,
-            Type:          msgType.String,
-            Content:       msgContent.String,
-            Status:        msgStatus.String,
-            Timestamp:     msgTimestamp.Time,
-        }
-    }
+	// If there's a last message, attach it with all fields
+	if msgContent.Valid && msgType.Valid && msgTimestamp.Valid {
+		conv.LastMessage = &Message{
+			ID:             msgID.String,
+			ConversationID: msgConvID.String,
+			SenderID:       msgSenderID.String,
+			Type:           msgType.String,
+			Content:        msgContent.String,
+			Status:         msgStatus.String,
+			Timestamp:      msgTimestamp.Time,
+		}
+	}
 
-    return &conv, nil
+	return &conv, nil
 }

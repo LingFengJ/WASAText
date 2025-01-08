@@ -1,11 +1,12 @@
-package database 
+package database
 
 import (
 	"database/sql"
 )
+
 // GetUserConversations retrieves all conversations for a user
 func (db *appdbimpl) GetUserConversations(userID string) ([]Conversation, error) {
-    query := `
+	query := `
         WITH LastMessages AS (
             SELECT 
                 id,
@@ -60,66 +61,66 @@ func (db *appdbimpl) GetUserConversations(userID string) ([]Conversation, error)
         WHERE cm.user_id = ?
         ORDER BY COALESCE(lm.timestamp, c.modified_at) DESC`
 
-    rows, err := db.c.Query(query, userID, userID) // We use userID twice in the query
-    if err != nil {
-        return nil, ErrDatabaseError
-    }
-    defer rows.Close()
+	rows, err := db.c.Query(query, userID, userID) // We use userID twice in the query
+	if err != nil {
+		return nil, ErrDatabaseError
+	}
+	defer rows.Close()
 
-    var conversations []Conversation
-    for rows.Next() {
-        var conv Conversation
-        // var msgContent, msgType sql.NullString
-        var msgID, msgConvID, msgSenderID, msgContent, msgType, msgStatus sql.NullString
-        var msgTimestamp sql.NullTime
-        var displayName, displayPhoto sql.NullString
+	var conversations []Conversation
+	for rows.Next() {
+		var conv Conversation
+		// var msgContent, msgType sql.NullString
+		var msgID, msgConvID, msgSenderID, msgContent, msgType, msgStatus sql.NullString
+		var msgTimestamp sql.NullTime
+		var displayName, displayPhoto sql.NullString
 
-        err := rows.Scan(
-            &conv.ID,
-            &conv.Type,
-            &displayName,
-            &displayPhoto,
-            &conv.CreatedAt,
-            &conv.ModifiedAt,
-            &msgID,
-            &msgConvID,
-            &msgSenderID,
-            &msgContent,
-            &msgType,
-            &msgStatus,
-            &msgTimestamp,
-        )
-        if err != nil {
-            return nil, ErrDatabaseError
-        }
+		err := rows.Scan(
+			&conv.ID,
+			&conv.Type,
+			&displayName,
+			&displayPhoto,
+			&conv.CreatedAt,
+			&conv.ModifiedAt,
+			&msgID,
+			&msgConvID,
+			&msgSenderID,
+			&msgContent,
+			&msgType,
+			&msgStatus,
+			&msgTimestamp,
+		)
+		if err != nil {
+			return nil, ErrDatabaseError
+		}
 
-        // Set the name based on what we got
-        if displayName.Valid {
-            conv.Name = displayName.String
-        }
-        if displayPhoto.Valid {
-            conv.PhotoURL = displayPhoto.String
-        }
+		// Set the name based on what we got
+		if displayName.Valid {
+			conv.Name = displayName.String
+		}
+		if displayPhoto.Valid {
+			conv.PhotoURL = displayPhoto.String
+		}
 
-        // If there's a last message, attach only preview info
-        if msgContent.Valid && msgType.Valid && msgTimestamp.Valid {
-            conv.LastMessage = &Message{
-                ID:             msgID.String,
-                ConversationID: msgConvID.String,
-                SenderID:       msgSenderID.String,
-                Type:          msgType.String,
-                Content:       msgContent.String,
-                Status:        msgStatus.String,
-                Timestamp:     msgTimestamp.Time,
-            }
-        }
+		// If there's a last message, attach only preview info
+		if msgContent.Valid && msgType.Valid && msgTimestamp.Valid {
+			conv.LastMessage = &Message{
+				ID:             msgID.String,
+				ConversationID: msgConvID.String,
+				SenderID:       msgSenderID.String,
+				Type:           msgType.String,
+				Content:        msgContent.String,
+				Status:         msgStatus.String,
+				Timestamp:      msgTimestamp.Time,
+			}
+		}
 
-        conversations = append(conversations, conv)
-    }
+		conversations = append(conversations, conv)
+	}
 
-    if err = rows.Err(); err != nil {
-        return nil, ErrDatabaseError
-    }
+	if err = rows.Err(); err != nil {
+		return nil, ErrDatabaseError
+	}
 
-    return conversations, nil
+	return conversations, nil
 }
