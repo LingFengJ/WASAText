@@ -23,5 +23,5 @@ type RequestContext struct {
 	UserID string
 
 	// Identifier is the authentication token used by the user
-    Identifier string
+	Identifier string
 }

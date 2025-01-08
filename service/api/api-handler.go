@@ -78,10 +78,7 @@ func (rt *_router) Handler() http.Handler {
 //     }
 // }
 
-
 // // liveness is a basic health check endpoint
 // func (h *_router) liveness(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 // 	w.WriteHeader(http.StatusOK)
 // }
-
-
