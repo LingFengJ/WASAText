@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type DeleteMessageResponse struct {
@@ -23,8 +25,8 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 	message, err := rt.db.GetMessage(messageID)
 	if err != nil {
 		ctx.Logger.WithError(err).Error("failed to get message")
-		switch err {
-		case database.ErrMessageNotFound:
+		switch {
+		case errors.Is(err, database.ErrMessageNotFound):
 			http.Error(w, "Message not found", http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

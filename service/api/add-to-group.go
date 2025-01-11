@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type AddToGroupRequest struct {
@@ -28,8 +30,8 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// Get user ID from username
 	userToAddID, err := rt.db.GetUserIDByUsername(req.Username)
 	if err != nil {
-		switch err {
-		case database.ErrUserNotFound:
+		switch {
+		case errors.Is(err, database.ErrUserNotFound):
 			http.Error(w, "User not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to get user ID")
@@ -41,8 +43,8 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// Verify it's a group conversation
 	conv, err := rt.db.GetConversation(groupID)
 	if err != nil {
-		switch err {
-		case database.ErrConversationNotFound:
+		switch {
+		case errors.Is(err, database.ErrConversationNotFound):
 			http.Error(w, "Group not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to get group")
@@ -51,7 +53,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	if conv.Type != "group" {
+	if conv.Type != ConversationTypeGroup {
 		http.Error(w, "Not a group conversation", http.StatusBadRequest)
 		return
 	}

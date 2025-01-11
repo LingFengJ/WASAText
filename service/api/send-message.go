@@ -3,12 +3,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"time"
 )
 
 // In send-message.go
@@ -59,8 +61,8 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 			conversationID, err = rt.createNewIndividualChat(ctx.UserID, req.RecipientName)
 		}
 		if err != nil {
-			switch err {
-			case database.ErrUserNotFound:
+			switch {
+			case errors.Is(err, database.ErrUserNotFound):
 				http.Error(w, "Recipient not found", http.StatusNotFound)
 			default:
 				ctx.Logger.WithError(err).Error("failed to create conversation")
@@ -100,7 +102,11 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(message)
+	if err := json.NewEncoder(w).Encode(message); err != nil {
+		ctx.Logger.WithError(err).Error("failed to encode response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Helper for creating individual chats
@@ -118,7 +124,7 @@ func (rt *_router) createNewIndividualChat(senderID, recipientName string) (stri
 
 	conv := &database.Conversation{
 		ID:         convID.String(),
-		Type:       "individual",
+		Type:       ConversationTypeIndividual,
 		CreatedAt:  time.Now(),
 		ModifiedAt: time.Now(),
 	}
@@ -150,7 +156,7 @@ func (rt *_router) createNewGroup(creatorID, groupName string, memberUsernames [
 
 	conv := &database.Conversation{
 		ID:         convID.String(),
-		Type:       "group",
+		Type:       ConversationTypeGroup,
 		Name:       groupName,
 		CreatedAt:  time.Now(),
 		ModifiedAt: time.Now(),

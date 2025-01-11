@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type CommentMessageRequest struct {
@@ -33,8 +35,8 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 	// Verify the message exists and user can access it
 	msg, err := rt.db.GetMessage(messageID)
 	if err != nil {
-		switch err {
-		case database.ErrMessageNotFound:
+		switch {
+		case errors.Is(err, database.ErrMessageNotFound):
 			http.Error(w, "Message not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to get message")
@@ -58,8 +60,8 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 	// Add reaction
 	err = rt.db.AddReaction(messageID, ctx.UserID, req.Emoji)
 	if err != nil {
-		switch err {
-		case database.ErrDuplicateReaction:
+		switch {
+		case errors.Is(err, database.ErrDuplicateReaction):
 			http.Error(w, "Reaction already exists", http.StatusConflict)
 		default:
 			ctx.Logger.WithError(err).Error("failed to add reaction")

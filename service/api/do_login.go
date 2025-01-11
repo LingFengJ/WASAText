@@ -2,8 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type LoginRequest struct {
@@ -49,14 +50,14 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		}
 	}
 
-	sendLoginResponse(w, identifier)
-}
-
-func sendLoginResponse(w http.ResponseWriter, identifier string) {
 	resp := LoginResponse{
 		Identifier: identifier,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

@@ -2,10 +2,17 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
+)
+
+const (
+	ConversationTypeGroup      = "group"
+	ConversationTypeIndividual = "individual"
 )
 
 type ConversationResponse struct {
@@ -45,8 +52,8 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 	conversation, err := rt.db.GetConversation(conversationID)
 	if err != nil {
 		ctx.Logger.WithError(err).Error("failed to get conversation")
-		switch err {
-		case database.ErrConversationNotFound:
+		switch {
+		case errors.Is(err, database.ErrConversationNotFound):
 			http.Error(w, "Conversation not found", http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -1,10 +1,12 @@
 package api
 
 import (
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
@@ -17,8 +19,8 @@ func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps h
 	// Verify the message exists and user can access it
 	msg, err := rt.db.GetMessage(messageID)
 	if err != nil {
-		switch err {
-		case database.ErrMessageNotFound:
+		switch {
+		case errors.Is(err, database.ErrMessageNotFound):
 			http.Error(w, "Message not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to get message")
@@ -42,8 +44,8 @@ func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps h
 	// Remove reaction
 	err = rt.db.RemoveReaction(messageID, ctx.UserID)
 	if err != nil {
-		switch err {
-		case database.ErrReactionNotFound:
+		switch {
+		case errors.Is(err, database.ErrReactionNotFound):
 			http.Error(w, "Reaction not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to remove reaction")

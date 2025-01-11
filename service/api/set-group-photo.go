@@ -2,13 +2,15 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
-	"io"
-	"net/http"
-	"strings"
 )
 
 type PhotoResponse struct {
@@ -32,8 +34,8 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 	// Get current conversation
 	conv, err := rt.db.GetConversation(groupID)
 	if err != nil {
-		switch err {
-		case database.ErrConversationNotFound:
+		switch {
+		case errors.Is(err, database.ErrConversationNotFound):
 			http.Error(w, "Group not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to get group")
@@ -42,7 +44,7 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 		return
 	}
 
-	if conv.Type != "group" {
+	if conv.Type != ConversationTypeGroup {
 		http.Error(w, "Not a group conversation", http.StatusBadRequest)
 		return
 	}
@@ -92,5 +94,9 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 	// Return response
 	response := PhotoResponse{PhotoURL: photoURL}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		ctx.Logger.WithError(err).Error("failed to encode response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type LeaveGroupResponse struct {
@@ -22,8 +24,8 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// Verify it's a group conversation
 	conv, err := rt.db.GetConversation(groupID)
 	if err != nil {
-		switch err {
-		case database.ErrConversationNotFound:
+		switch {
+		case errors.Is(err, database.ErrConversationNotFound):
 			http.Error(w, "Group not found", http.StatusNotFound)
 		default:
 			ctx.Logger.WithError(err).Error("failed to get group")
@@ -32,7 +34,7 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	if conv.Type != "group" {
+	if conv.Type != ConversationTypeGroup {
 		http.Error(w, "Not a group conversation", http.StatusBadRequest)
 		return
 	}
@@ -48,5 +50,9 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// Return success response
 	response := LeaveGroupResponse{Success: true}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		ctx.Logger.WithError(err).Error("failed to encode response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
 )
 
 type UpdateUsernameRequest struct {
@@ -40,8 +42,8 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, ps http
 	if err != nil {
 		ctx.Logger.WithError(err).Error("failed to update username")
 
-		switch err {
-		case database.ErrUsernameTaken:
+		switch {
+		case errors.Is(err, database.ErrUsernameTaken):
 			http.Error(w, "Username already taken", http.StatusConflict)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

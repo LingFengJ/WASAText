@@ -3,12 +3,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
 	"github.com/LingFengJ/WASAText/service/database"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"time"
 )
 
 type StartConversationRequest struct {
@@ -35,8 +37,8 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps 
 	// Get recipient's ID from username
 	recipientID, err := rt.db.GetUserIDByUsername(req.RecipientName)
 	if err != nil {
-		switch err {
-		case database.ErrUserNotFound:
+		switch {
+		case errors.Is(err, database.ErrUserNotFound):
 			http.Error(w, "Recipient not found", http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -63,5 +65,9 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, ps 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(conv)
+	if err := json.NewEncoder(w).Encode(conv); err != nil {
+		ctx.Logger.WithError(err).Error("failed to encode response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
