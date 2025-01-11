@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,13 +12,13 @@ func (db *appdbimpl) UpdateGroupPhoto(groupID string, filename string, imageData
 	// First verify it's a group
 	var convType string
 	err := db.c.QueryRow("SELECT type FROM conversations WHERE id = ?", groupID).Scan(&convType)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrConversationNotFound
 	}
 	if err != nil {
 		return "", ErrDatabaseError
 	}
-	if convType != "group" {
+	if convType != ConversationTypeGroup {
 		return "", ErrInvalidConversationType
 	}
 

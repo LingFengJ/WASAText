@@ -1,7 +1,7 @@
 package database
 
 import (
-	"fmt"
+	"errors"
 )
 
 func (db *appdbimpl) GetConversationMembers(conversationID string) ([]ConversationMember, error) {
@@ -12,7 +12,10 @@ func (db *appdbimpl) GetConversationMembers(conversationID string) ([]Conversati
 		conversationID)
 
 	if err != nil {
-		return nil, fmt.Errorf("error getting conversation members: %w", err)
+		var (
+			ErrGettingConversationMember = errors.New("error in db for getting conversation member")
+		)
+		return nil, ErrGettingConversationMember
 	}
 	defer rows.Close()
 
@@ -26,13 +29,19 @@ func (db *appdbimpl) GetConversationMembers(conversationID string) ([]Conversati
 			&member.LastReadAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error scanning conversation member: %w", err)
+			var (
+				ErrScanningConversationMember = errors.New("DB Error in scanning conversation member")
+			)
+			return nil, ErrScanningConversationMember
 		}
 		members = append(members, member)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating conversation members: %w", err)
+		var (
+			ErrIteratingConversationMember = errors.New("error iterating conversation members")
+		)
+		return nil, ErrIteratingConversationMember
 	}
 
 	return members, nil

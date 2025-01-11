@@ -1,16 +1,22 @@
 package database
 
 import (
-	"github.com/gofrs/uuid"
 	"time"
+
+	"github.com/gofrs/uuid"
+)
+
+const (
+	ConversationTypeGroup      = "group"
+	ConversationTypeIndividual = "individual"
 )
 
 func (db *appdbimpl) CreateConversation(conv *Conversation, members []string) error {
-	if conv.Type != "individual" && conv.Type != "group" {
+	if conv.Type != ConversationTypeIndividual && conv.Type != ConversationTypeGroup {
 		return ErrInvalidConversationType
 	}
 
-	if conv.Type == "group" && conv.Name == "" {
+	if conv.Type == ConversationTypeGroup && conv.Name == "" {
 		return ErrGroupNameRequired
 	}
 
@@ -19,7 +25,12 @@ func (db *appdbimpl) CreateConversation(conv *Conversation, members []string) er
 	if err != nil {
 		return ErrDatabaseError
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil {
+			err = ErrDatabaseError
+		}
+	}()
 
 	// Generate ID if not provided
 	if conv.ID == "" {

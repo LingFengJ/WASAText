@@ -3,11 +3,11 @@ package database
 import "time"
 
 func (db *appdbimpl) UpdateConversation(conv *Conversation) error {
-	if conv.Type != "individual" && conv.Type != "group" {
+	if conv.Type != ConversationTypeIndividual && conv.Type != ConversationTypeGroup {
 		return ErrInvalidConversationType
 	}
 
-	if conv.Type == "group" && conv.Name == "" {
+	if conv.Type == ConversationTypeGroup && conv.Name == "" {
 		return ErrGroupNameRequired
 	}
 

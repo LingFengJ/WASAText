@@ -1,9 +1,10 @@
 package database
 
 import (
-	"fmt"
-	"github.com/gofrs/uuid"
+	"errors"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 func (db *appdbimpl) CheckUserExists(username string) (bool, error) {
@@ -19,13 +20,19 @@ func (db *appdbimpl) CreateUser(username string, password string) (string, error
 	// Generate unique identifier
 	identifier, err := uuid.NewV4()
 	if err != nil {
-		return "", fmt.Errorf("error generating identifier: %w", err)
+		var (
+			ErrGeneratingIdentifier = errors.New("error generating identifier")
+		)
+		return "", ErrGeneratingIdentifier
 	}
 
 	// Generate unique ID
 	id, err := uuid.NewV4()
 	if err != nil {
-		return "", fmt.Errorf("error generating id: %w", err)
+		var (
+			ErrGeneratingId = errors.New("error generating id")
+		)
+		return "", ErrGeneratingId
 	}
 
 	now := time.Now()
@@ -37,9 +44,10 @@ func (db *appdbimpl) CreateUser(username string, password string) (string, error
 		id.String(), username, password, identifier.String(), now, now)
 
 	if err != nil {
-		// Log the specific error for debugging
-		fmt.Printf("Database error: %v\n", err)
-		return "", fmt.Errorf("error inserting user: %w", err)
+		var (
+			ErrInsertingUser = errors.New("error inserting user")
+		)
+		return "", ErrInsertingUser
 	}
 
 	return identifier.String(), nil

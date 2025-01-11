@@ -1,8 +1,9 @@
 package database
 
 import (
-	"github.com/gofrs/uuid"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 func (db *appdbimpl) CreateMessage(msg *Message) error {
@@ -30,7 +31,12 @@ func (db *appdbimpl) CreateMessage(msg *Message) error {
 	if err != nil {
 		return ErrDatabaseError
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil {
+			err = ErrDatabaseError
+		}
+	}()
 
 	// Insert message
 	_, err = tx.Exec(`

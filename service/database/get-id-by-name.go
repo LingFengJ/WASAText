@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 )
 
 func (db *appdbimpl) GetUserIDByUsername(username string) (string, error) {
@@ -11,7 +12,7 @@ func (db *appdbimpl) GetUserIDByUsername(username string) (string, error) {
 		username,
 	).Scan(&id)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrUserNotFound
 	}
 	if err != nil {

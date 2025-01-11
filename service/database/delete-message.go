@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 )
 
 func (db *appdbimpl) DeleteMessage(messageID string) error {
@@ -10,12 +11,17 @@ func (db *appdbimpl) DeleteMessage(messageID string) error {
 	if err != nil {
 		return ErrDatabaseError
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil {
+			err = ErrDatabaseError
+		}
+	}()
 
 	// Get conversation ID before deleting the message
 	var conversationID string
 	err = tx.QueryRow("SELECT conversation_id FROM messages WHERE id = ?", messageID).Scan(&conversationID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return ErrMessageNotFound
 	}
 	if err != nil {

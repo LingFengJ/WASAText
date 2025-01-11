@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -15,7 +14,7 @@ func (db *appdbimpl) AddConversationMember(conversationID, userID string) error 
 		conversationID, userID, now)
 
 	if err != nil {
-		return fmt.Errorf("error adding conversation member: %w", err)
+		return ErrDatabaseError
 	}
 
 	return nil

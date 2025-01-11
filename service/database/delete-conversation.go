@@ -6,7 +6,12 @@ func (db *appdbimpl) DeleteConversation(conversationID string) error {
 	if err != nil {
 		return ErrDatabaseError
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil {
+			err = ErrDatabaseError
+		}
+	}()
 
 	// Delete all reactions to messages in this conversation
 	_, err = tx.Exec(`

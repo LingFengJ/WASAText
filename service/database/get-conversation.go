@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 )
 
 func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, error) {
@@ -52,7 +53,7 @@ func (db *appdbimpl) GetConversation(conversationID string) (*Conversation, erro
 		&msgTimestamp,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrConversationNotFound
 	}
 	if err != nil {

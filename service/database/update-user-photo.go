@@ -1,8 +1,8 @@
 package database
 
 import (
-	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 )
@@ -21,7 +21,8 @@ func (db *appdbimpl) UpdateUserPhoto(userID string, filename string, imageData [
 	}
 
 	// Create URL for the photo
-	photoURL := fmt.Sprintf("/photos/%s.jpg", filename)
+	// photoURL := fmt.Sprintf("/photos/%s.jpg", filename)
+	photoURL := path.Join("/photos", filename+".jpg")
 
 	// Update database with photo URL
 	result, err := db.c.Exec(`

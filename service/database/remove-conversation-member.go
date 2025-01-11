@@ -1,7 +1,7 @@
 package database
 
 import (
-	"fmt"
+	"errors"
 )
 
 func (db *appdbimpl) RemoveConversationMember(conversationID, userID string) error {
@@ -11,12 +11,18 @@ func (db *appdbimpl) RemoveConversationMember(conversationID, userID string) err
 		conversationID, userID)
 
 	if err != nil {
-		return fmt.Errorf("error removing conversation member: %w", err)
+		var (
+			ErrRemovingConversationMember = errors.New("failed to remove conversation member")
+		)
+		return ErrRemovingConversationMember
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error checking affected rows: %w", err)
+		var (
+			ErrCheckingrows = errors.New("error checking affected rows")
+		)
+		return ErrCheckingrows
 	}
 
 	if rows == 0 {

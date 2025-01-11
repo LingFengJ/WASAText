@@ -19,7 +19,7 @@ This is an example on how to migrate the DB and connect to it:
 	db, err := sql.Open("sqlite3", "./foo.db")
 	if err != nil {
 		logger.WithError(err).Error("error opening SQLite DB")
-		return fmt.Errorf("opening SQLite: %w", err)
+		// return fmt.Errorf("opening SQLite: %w", err)
 	}
 	defer func() {
 		logger.Debug("database stopping")
@@ -33,7 +33,6 @@ package database
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 )
 
 type AppDatabase interface {
@@ -176,10 +175,12 @@ func New(db *sql.DB) (AppDatabase, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			_, err = db.Exec(sqlStmt)
 			if err != nil {
-				return nil, fmt.Errorf("error creating database structure for table %s: %w", tableName, err)
+				// return nil, fmt.Errorf("error creating database structure for table %s: %w", tableName, err)
+				return nil, ErrTableCreation
 			}
 		} else if err != nil {
-			return nil, fmt.Errorf("error checking table %s existence: %w", tableName, err)
+			// return nil, fmt.Errorf("error checking table %s existence: %w", tableName, err)
+			return nil, ErrTableCheck
 		}
 	}
 

@@ -34,6 +34,8 @@ var (
 	// General errors
 	ErrInvalidID      = errors.New("invalid identifier format")
 	ErrDatabaseError  = errors.New("database error")
+	ErrTableCreation  = errors.New("error creating database table")
+	ErrTableCheck     = errors.New("error checking table existence")
 	ErrInvalidRequest = errors.New("invalid request")
 )
 

@@ -3,6 +3,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 )
 
 func (db *appdbimpl) GetMessage(messageID string) (*Message, error) {
@@ -31,7 +32,7 @@ func (db *appdbimpl) GetMessage(messageID string) (*Message, error) {
 		&msg.ReplyToID,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrMessageNotFound
 	}
 	if err != nil {
