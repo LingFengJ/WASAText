@@ -1,56 +1,61 @@
 <script>
+import ConversationList from '@/components/ConversationList.vue'
+
 export default {
-	data: function() {
-		return {
-			errormsg: null,
-			loading: false,
-			some_data: null,
-		}
-	},
-	methods: {
-		async refresh() {
-			this.loading = true;
-			this.errormsg = null;
-			try {
-				let response = await this.$axios.get("/");
-				this.some_data = response.data;
-			} catch (e) {
-				this.errormsg = e.toString();
-			}
-			this.loading = false;
-		},
-	},
-	mounted() {
-		this.refresh()
-	}
+  name: 'HomeView',
+  components: {
+    ConversationList
+  },
+  data() {
+    return {
+      username: sessionStorage.getItem('username')
+    }
+  },
+  methods: {
+    startNewChat() {
+      this.$router.push('/new-conversation')
+    },
+    startNewGroup() {
+      this.$router.push('/new-group')
+    }
+  }
 }
 </script>
 
 <template>
-	<div>
-		<div
-			class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-			<h1 class="h2">Home page</h1>
-			<div class="btn-toolbar mb-2 mb-md-0">
-				<div class="btn-group me-2">
-					<button type="button" class="btn btn-sm btn-outline-secondary" @click="refresh">
-						Refresh
-					</button>
-					<button type="button" class="btn btn-sm btn-outline-secondary" @click="exportList">
-						Export
-					</button>
-				</div>
-				<div class="btn-group me-2">
-					<button type="button" class="btn btn-sm btn-outline-primary" @click="newItem">
-						New
-					</button>
-				</div>
-			</div>
-		</div>
+  <div class="home-view">
+    <div class="d-flex justify-content-between align-items-center p-4 border-bottom">
+      <h1 class="h3 mb-0">Welcome, {{ username }}</h1>
+      <div class="btn-group">
+        <button class="btn btn-primary me-2" @click="startNewChat">
+          <i class="bi bi-chat-text"></i> New Chat
+        </button>
+        <button class="btn btn-primary" @click="startNewGroup">
+          <i class="bi bi-people"></i> New Group
+        </button>
+      </div>
+    </div>
 
-		<ErrorMsg v-if="errormsg" :msg="errormsg"></ErrorMsg>
-	</div>
+    <div class="p-4">
+      <h2 class="h4 mb-4">Recent Conversations</h2>
+      <ConversationList />
+    </div>
+  </div>
 </template>
 
-<style>
+<style scoped>
+.home-view {
+  height: 100%;
+  background-color: #f8f9fa;
+}
+
+.btn-group .btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bi {
+  font-size: 1.2rem;
+}
 </style>
