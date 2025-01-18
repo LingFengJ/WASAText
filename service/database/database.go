@@ -44,6 +44,7 @@ type AppDatabase interface {
 	GetUserByCredentials(username string, password string) (string, error) // Returns identifier
 	GetUserIDFromIdentifier(identifier string) (string, error)
 	GetUserIDByUsername(username string) (string, error)
+	SearchUsers(query string) ([]User, error) // Returns a list of users
 
 	// User profile management
 	UpdateUsername(userID string, newUsername string) error

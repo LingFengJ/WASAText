@@ -33,6 +33,10 @@ func (rt *_router) Handler() http.Handler {
 	h.router.PUT("/groups/:groupId/name", h.wrap(h.setGroupName))
 	h.router.PUT("/groups/:groupId/photo", h.wrap(h.setGroupPhoto))
 
+	// endpoints for the frontend
+	h.router.GET("/users/search", h.wrap(h.searchUsers))
+	h.router.ServeFiles("/photos/*filepath", http.Dir("data/photos"))
+
 	// Special endpoints
 	h.router.GET("/liveness", h.liveness)
 
