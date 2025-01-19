@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import axios from './services/axios.js';
 
 import ErrorMsg from './components/ErrorMsg.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
@@ -16,13 +16,11 @@ import './assets/dashboard.css'
 import './assets/main.css'
 
 const app = createApp(App)
-
+app.config.globalProperties.$axios = axios;
 // Register global components
 app.component('ErrorMsg', ErrorMsg)
 app.component('LoadingSpinner', LoadingSpinner)
 
-// Use plugins
-app.use(createPinia())
 app.use(router)
 
 // Global error handler
