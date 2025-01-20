@@ -16,13 +16,6 @@ export default {
   },
   methods: {
     async performSearch() {
-      // Don't search if query is too short
-      if (this.searchQuery.length < 3) {
-        this.searchResults = [];
-        this.showResults = false;
-        return;
-      }
-      
       this.loading = true;
       try {
         console.log('Performing search for:', this.searchQuery);
@@ -77,6 +70,7 @@ export default {
             class="form-control"
             placeholder="Search users..."
             @input="performSearch"
+            @focus="() => { this.searchQuery = ''; performSearch(); }"
           />
           <span class="input-group-text">
             <i class="bi bi-search"></i>
@@ -84,7 +78,7 @@ export default {
         </div>
         
         <!-- Search Results Dropdown -->
-        <div v-if="showResults && searchQuery.length >= 3" class="search-results">
+        <div v-if="showResults" class="search-results">
           <div v-if="loading" class="p-2 text-center">
             <div class="spinner-border spinner-border-sm" role="status">
               <span class="visually-hidden">Loading...</span>
@@ -95,7 +89,7 @@ export default {
               v-for="user in searchResults"
               :key="user.id"
               class="list-group-item list-group-item-action"
-              @click="startChat(user.username)"
+              @click="startChat(user)"
             >
               <i class="bi bi-person-circle me-2"></i>
               {{ user.username }}

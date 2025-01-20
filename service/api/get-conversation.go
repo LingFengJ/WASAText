@@ -69,6 +69,17 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 		return
 	}
 
+	// Get reactions for each message
+	for i := range messages {
+		reactions, err := rt.db.GetMessageReactions(messages[i].ID)
+		if err != nil {
+			ctx.Logger.WithError(err).Error("failed to get message reactions")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		messages[i].Reactions = reactions
+	}
+
 	response := ConversationResponse{
 		Conversation: conversation,
 		Messages:     messages,

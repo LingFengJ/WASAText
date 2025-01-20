@@ -32,14 +32,15 @@ type Conversation struct {
 
 // Message represents a chat message
 type Message struct {
-	ID             string    `json:"id"`
-	ConversationID string    `json:"conversationId"`
-	SenderID       string    `json:"senderId"`
-	Type           string    `json:"type"` // "text" or "photo"
-	Content        string    `json:"content"`
-	Status         string    `json:"status"` // "sent", "received", or "read"
-	Timestamp      time.Time `json:"timestamp"`
-	ReplyToID      string    `json:"replyToId,omitempty"`
+	ID             string     `json:"id"`
+	ConversationID string     `json:"conversationId"`
+	SenderID       string     `json:"senderId"`
+	Type           string     `json:"type"` // "text" or "photo"
+	Content        string     `json:"content"`
+	Status         string     `json:"status"` // "sent", "received", or "read"
+	Timestamp      time.Time  `json:"timestamp"`
+	ReplyToID      string     `json:"replyToId,omitempty"`
+	Reactions      []Reaction `json:"reactions,omitempty"`
 }
 
 // Reaction represents an emoji reaction to a message

@@ -72,6 +72,7 @@ type AppDatabase interface {
 	DeleteMessage(messageID string) error
 	AddReaction(messageID, userID, emoji string) error
 	RemoveReaction(messageID, userID string) error
+	GetMessageReactions(messageID string) ([]Reaction, error)
 
 	// // Message status
 	UpdateMessageStatus(messageID, userID, status string) error
