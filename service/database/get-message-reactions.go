@@ -34,5 +34,9 @@ func (db *appdbimpl) GetMessageReactions(messageID string) ([]Reaction, error) {
 		reactions = append(reactions, reaction)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, ErrDatabaseError
+	}
+
 	return reactions, nil
 }
