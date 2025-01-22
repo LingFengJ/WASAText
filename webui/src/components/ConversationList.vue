@@ -17,26 +17,23 @@ export default {
             const cleanPath = conv.photoUrl.replace(/\\/g, '/');
             // Ensure the path starts with a single forward slash
             const normalizedPath = cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath;
-            return `http://localhost:3000${normalizedPath}`;
+            return `${__API_URL__}${normalizedPath}`;
         },
         async loadConversations() {
             try {
                 console.log('Loading conversations...');
-                const response = await fetch('http://localhost:3000/conversations', {
+                const response = await this.$axios.get('/conversations', {
                     headers: {
                         'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
                     }
                 });
                 
                 console.log('Response status:', response.status);
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Conversations loaded:', data);
-                    this.conversations = data;
-                } else {
-                    const errorData = await response.json();
-                    this.error = errorData.message || 'Failed to load conversations';
-                }
+
+                const data = response.data;
+                console.log('Conversations loaded:', data);
+                this.conversations = data;
+
             } catch (error) {
                 console.error('Error loading conversations:', error);
                 this.error = 'Failed to load conversations';
@@ -77,7 +74,6 @@ export default {
                 :to="`/conversations/${conv.id}`"
                 class="list-group-item list-group-item-action"
             >
-                           <!-- :src="`http://localhost:3000${conv.photoUrl}`" -->
                 <div class="d-flex">
                     <div class="conversation-avatar me-3">
                         <img 
@@ -141,6 +137,13 @@ export default {
 .bi-people-fill {
     font-size: 2rem;
     color: #6c757d;
+}
+
+.mb-1 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;  /* Adjust based on your layout */
 }
 </style>
 

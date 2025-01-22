@@ -29,29 +29,27 @@ export default {
 
       this.loading = true
       try {
-        const response = await fetch('http://localhost:3000/conversations//messages', {
+        const response = await this.$axios.post('/conversations//messages',           
+        {
+          type: 'group',
+          groupName: this.groupName,
+          members: this.members,
+          content: this.firstMessage,
+          messageType: 'text'
+        },
+        {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            type: 'group',
-            groupName: this.groupName,
-            members: this.members,
-            content: this.firstMessage,
-            messageType: 'text'
-          })
         })
 
-        if (response.ok) {
-          const data = await response.json()
-          this.$router.push(`/conversations/${data.conversationId}`)
-        } else {
-          this.error = 'Failed to create group'
-        }
+        const data = response.data
+        this.$router.push(`/conversations/${data.conversationId}`)
+
       } catch (error) {
-        this.error = 'Network error'
+        this.error = 'Failed to create group'
         console.error('Error:', error)
       } finally {
         this.loading = false

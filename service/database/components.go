@@ -35,6 +35,7 @@ type Message struct {
 	ID             string     `json:"id"`
 	ConversationID string     `json:"conversationId"`
 	SenderID       string     `json:"senderId"`
+	SenderUsername string     `json:"senderUsername,omitempty"`
 	Type           string     `json:"type"` // "text" or "photo"
 	Content        string     `json:"content"`
 	Status         string     `json:"status"` // "sent", "received", or "read"

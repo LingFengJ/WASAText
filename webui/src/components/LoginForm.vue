@@ -15,36 +15,28 @@ export default {
                     password: this.password
                 });
 
-                const response = await fetch('http://localhost:3000/session', {
-                    method: 'POST',
+                const response = await this.$axios.post('/session',                    
+                    {
+                        name: this.username,
+                        password: this.password
+                    }, 
+                    {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        name: this.username,
-                        password: this.password
-                    })
-                });
+                    });
                 
                 console.log('Response status:', response.status);
-                const responseText = await response.text();
+                const responseText = response;
                 console.log('Response text:', responseText);
 
-                if (response.ok) {
-                    const data = JSON.parse(responseText);
-                    console.log('Login successful, got identifier:', data.identifier);
-                    sessionStorage.setItem('authToken', data.identifier);
-                    sessionStorage.setItem('username', this.username);
-                    this.$router.push('/conversations');
-                } else {
-                    try {
-                        const errorData = JSON.parse(responseText);
-                        this.error = errorData.message || 'Login failed';
-                    } catch (e) {
-                        this.error = `Login failed - ${responseText}`;
-                    }
-                }
+                const data = responseText.data;
+                console.log('Login successful, got identifier:', data.identifier);
+                sessionStorage.setItem('authToken', data.identifier);
+                sessionStorage.setItem('username', this.username);
+                this.$router.push('/conversations');
             } catch (error) {
+                
                 console.error('Login error:', error);
                 console.error('Error details:', {
                     message: error.message,

@@ -84,10 +84,18 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 		}
 	}
 
+	username, err := rt.db.GetUsernameByIdentifier(ctx.UserID)
+	if err != nil {
+		ctx.Logger.WithError(err).Error("failed to get username")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	// Create message
 	message := &database.Message{
 		ConversationID: conversationID,
 		SenderID:       ctx.UserID,
+		SenderUsername: username,
 		Type:           req.Type,
 		Content:        req.Content,
 		Status:         "sent",

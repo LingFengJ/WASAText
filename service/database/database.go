@@ -45,6 +45,7 @@ type AppDatabase interface {
 	GetUserIDFromIdentifier(identifier string) (string, error)
 	GetUserIDByUsername(username string) (string, error)
 	SearchUsers(query string) ([]User, error) // Returns a list of users
+	GetUsernameByIdentifier(identifier string) (string, error)
 
 	// User profile management
 	UpdateUsername(userID string, newUsername string) error

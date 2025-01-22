@@ -15,27 +15,45 @@ export default {
 
             this.loading = true;
             try {
-                const response = await fetch('http://localhost:3000/users/me/name', {
-                    method: 'PUT',
+                const response = await this.$axios.put('/users/me/name', 
+                    {
+                        name: this.newUsername
+                    },
+                    {
                     headers: {
                         'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        name: this.newUsername
-                    })
+
                 });
 
-                if (response.ok) {
-                    sessionStorage.setItem('username', this.newUsername);
-                    this.success = 'Username updated successfully';
-                    this.error = null;
-                } else {
-                    this.error = 'Failed to update username';
-                    this.success = null;
-                }
+                sessionStorage.setItem('username', this.newUsername);
+                this.success = 'Username updated successfully';
+                this.error = null;
+
             } catch (error) {
-                this.error = 'Network error';
+                if (error.response){    
+                    const statusCode = error.response.status;
+                    switch (statusCode) {
+                        case 400:
+                            console.error('Bad request');
+                            this.error = 'Bad request';
+                        case 409:
+                            console.error('Conflict: username already taken', error.response.data);
+                            this.error = 'Username already taken';
+                            break;
+                        case 500:
+                            console.error('Internal Server Error:', error.response.data);
+                            this.error = 'Internal Server Error';
+                            break;
+                        default:
+                            console.error(`Unhandled HTTP Error (${statusCode}):`, error.response.data);
+                            this.error = 'Network error, failed to update username';
+                    }
+                } else {
+                    console.error('Network error:', error);
+                    this.error = 'Network error, failed to update username';
+                } 
                 this.success = null;
             } finally {
                 this.loading = false;
@@ -49,23 +67,20 @@ export default {
             formData.append('photo', this.selectedPhoto);
 
             try {
-                const response = await fetch('http://localhost:3000/users/me/photo', {
-                    method: 'PUT',
+                const response = await this.$axios.put('/users/me/photo', 
+                formData,
+                {
                     headers: {
                         'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
-                    },
-                    body: formData
+                    }
                 });
 
-                if (response.ok) {
-                    this.success = 'Profile photo updated successfully';
-                    this.error = null;
-                } else {
-                    this.error = 'Failed to update profile photo';
-                    this.success = null;
-                }
+                this.success = 'Profile photo updated successfully';
+                this.error = null;
+
             } catch (error) {
-                this.error = 'Network error';
+                console.error('Error updating photo:', error);
+                this.error = 'Failed to update profile photo';
                 this.success = null;
             }
         },

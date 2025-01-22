@@ -17,26 +17,22 @@ export default {
 
             this.loading = true;
             try {
-                const response = await fetch('http://localhost:3000/conversations//messages', {
-                    method: 'POST',
+                const response = await this.$axios.post('/conversations//messages',                     
+                {
+                    recipientName: this.recipientName,
+                    content: this.message,
+                    type: 'text'
+                }, {
                     headers: {
                         'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        recipientName: this.recipientName,
-                        content: this.message,
-                        type: 'text'
-                    })
+
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    this.$router.push(`/conversations/${data.conversationId}`);
-                } else {
-                    const errorData = await response.json();
-                    this.error = errorData.message || 'Failed to start conversation';
-                }
+                const data = response.data;
+                this.$router.push(`/conversations/${data.conversationId}`);
+
             } catch (error) {
                 console.error('Error:', error);
                 this.error = 'Network error';

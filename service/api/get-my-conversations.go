@@ -41,6 +41,31 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 		conversations = []database.Conversation{}
 	}
 
+	// Update status to "received" for all unread messages
+	for _, conv := range conversations {
+		messages, err := rt.db.GetMessages(conv.ID, 50, 0) // Get all recent messages
+		if err != nil {
+			ctx.Logger.WithError(err).Error("failed to get messages")
+			continue
+		}
+
+		// // Check rows.Err after GetMessages query
+		// if err = rows.Err(); err != nil {
+		// 	ctx.Logger.WithError(err).Error("error checking rows")
+		// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+		// 	return
+		// }
+
+		for _, msg := range messages {
+			if msg.SenderID != ctx.UserID && msg.Status == "sent" {
+				err := rt.db.UpdateMessageStatus(msg.ID, ctx.UserID, "received")
+				if err != nil {
+					ctx.Logger.WithError(err).Error("failed to update message status")
+				}
+			}
+		}
+	}
+
 	// Send response
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(conversations); err != nil {

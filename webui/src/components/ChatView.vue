@@ -14,6 +14,7 @@ export default {
             loading: true,
             error: null,
             authToken: null,
+            username: null,
             showingReactionModal: false,
             showingForwardModal: false,
             selectedMessage: null,
@@ -22,58 +23,33 @@ export default {
         }
     },
     async created() {
-        // this.authToken = sessionStorage.getItem('authToken');
-        // await this.loadConversation();
-        // this.scrollToBottom();
-
         console.log('Conversation ID:', this.id);
         this.authToken = sessionStorage.getItem('authToken');
+        this.username = sessionStorage.getItem('username');
+        console.log('Current username:', this.username);
         this.loadConversation();
     },
     methods: {
         async loadConversation() {
             try {
-                const response = await fetch(`http://localhost:3000/conversations/${this.id}`, {
+                const response = await this.$axios.get(`/conversations/${this.id}`, {
                     headers: {
                         'Authorization': `Bearer ${this.authToken}`
                     }
                 });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Conversation data:', data);
-                    this.conversation = data.conversation;
-                    // this.messages = data.messages;
-                    this.messages = data.messages.map(msg => ({
-                        ...msg,
-                        reactions: msg.reactions || [],
-                        // Status should update based on backend response
-                        status: msg.status || 'sent'
-                    }));
+                const data = response.data;
+                console.log('Conversation data:', data);
+                this.conversation = data.conversation;
+                // this.messages = data.messages;
+                this.messages = data.messages.map(msg => ({
+                    ...msg,
+                    reactions: msg.reactions || [],
+                    // Status should update based on backend response
+                    status: msg.status || 'sent'
+                }));
+                console.log('messages with reactions:', this.messages);
 
-                    // Update message status to 'read' for received messages
-                    if (this.messages.length > 0) {
-                        const unreadMessages = this.messages.filter(
-                            msg => msg.senderId !== this.authToken && msg.status !== 'read'
-                        );
-                        
-                        if (unreadMessages.length > 0) {
-                            await Promise.all(unreadMessages.map(msg => 
-                                fetch(`http://localhost:3000/messages/${msg.id}/status`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Authorization': `Bearer ${this.authToken}`,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({ status: 'read' })
-                                })
-                            ));
-                        }
-                    }
-                    console.log('messages with reactions:', this.messages);
-                } else {
-                    this.error = 'Failed to load conversation';
-                }
             } catch (error) {
                 console.error('Error loading conversation:', error);
                 this.error = 'Network error';
@@ -85,28 +61,48 @@ export default {
             if (!this.newMessage.trim()) return;
             
             try {
-                const response = await fetch(`http://localhost:3000/conversations/${this.id}/messages`, {
-                    method: 'POST',
+                const response = await this.$axios.post(`/conversations/${this.id}/messages`, 
+                    {
+                    content: this.newMessage,
+                    type: 'text'
+                    },    
+                    {                
                     headers: {
                         'Authorization': `Bearer ${this.authToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        content: this.newMessage,
-                        type: 'text'
-                    })
-                });
+                    }
+                );
                 
-                if (response.ok) {
-                    this.newMessage = '';
-                    await this.loadConversation();
-                    this.scrollToBottom();
-                } else {
-                    this.error = 'Failed to send message';
-                }
+                this.newMessage = '';
+                await this.loadConversation();
+                this.scrollToBottom();
             } catch (error) {
-                console.error('Error sending message:', error);
-                this.error = 'Network error';
+                if (error.response) {
+                    const statusCode = error.response.status;
+                    switch (statusCode) {
+                        case 400:
+                            console.error('Bad request');
+                        case 401:
+                            console.error('Access Unauthorized:', error.response.data);
+                            break;
+                        case 403:
+                            console.error('Access Forbidden: You are not a member of the conversation', error.response.data);
+                            break;
+                        case 404:
+                            console.error('Recipient Not Found:', error.response.data);
+                            break;
+                        case 500:
+                            console.error('Failed to get Coversation Internal Server Error:', error.response.data);
+                            break;
+                        default:
+                            console.error(`Unhandled HTTP Error (${statusCode}):`, error.response.data);
+                    }
+                } else {
+                        console.error('Error sending message:', error);
+                        this.error = 'Network error';
+                    }
+            
             }
         },
 
@@ -129,47 +125,58 @@ export default {
         }, 
         async addReaction(message, emoji) {
             try {
-                const response = await fetch(`http://localhost:3000/messages/${message.id}/reactions`, {
-                    method: 'POST',
+                const response = await this.$axios.post(`/messages/${message.id}/reactions`, 
+                {
+                    Emoji:  emoji
+                },
+                {
                     headers: {
                         'Authorization': `Bearer ${this.authToken}`,
                         'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ emoji })
+                    }
                 });
                 
-                if (response.ok) {
-                    await this.loadConversation();
-                } else {
-                    const errData = await response.json();
-                    console.error('Failed to add reaction:', errData);
-                }
+                await this.loadConversation();
             } catch (error) {
-                console.error('Error adding reaction:', error);
+                if (err.response){    
+                    const statusCode = error.response.status;
+                    switch (statusCode) {
+                        case 400:
+                            console.error('Bad request');
+                        case 401:
+                            console.error('Access Unauthorized:', error.response.data);
+                            break;
+                        case 403:
+                            console.error('Access Forbidden: You are not a member of the conversation', error.response.data);
+                            break;
+                        case 404:
+                            console.error('Recipient Not Found:', error.response.data);
+                            break;
+                        case 409:
+                            console.error('Conflict:', error.response.data);
+                            break;
+                        case 500:
+                            console.error('Failed to get Coversation Internal Server Error:', error.response.data);
+                            break;
+                        default:
+                            console.error(`Unhandled HTTP Error (${statusCode}):`, error.response.data);
+                    }
+                }else{
+                    console.error('Error adding reaction:', error);
+                }
             }
             this.showingReactionModal = false;
             this.selectedMessage = null;
         },
 
         async removeReaction(messageId, reaction) {
-            // if (reaction.userId !== this.authToken){ 
-            //     console.log("Cannot remove reaction - not the owner");
-            //     return; // Only allow removing own reactions
-            // } 
             try {
-                const response = await fetch(`http://localhost:3000/messages/${messageId}/reactions`, {
-                    method: 'DELETE',
+                const response = await this.$axios.delete(`/messages/${messageId}/reactions`, {
                     headers: {
                         'Authorization': `Bearer ${this.authToken}`
                     }
                 });
-                
-                if (response.ok) {
-                    await this.loadConversation(); // Reload to update reactions
-                } else {
-                    const errData = await response.json();
-                    console.error('Failed to remove reaction:', errData);
-                }
+       await this.loadConversation();
             } catch (error) {
                 console.error('Error removing reaction:', error);
             }
@@ -191,40 +198,50 @@ export default {
             },
         async loadConversations() {
             try {
-                const response = await fetch('http://localhost:3000/conversations', {
+                const response = await this.$axios.get('/conversations', {
                     headers: {
                         'Authorization': `Bearer ${this.authToken}`
                     }
                 });
                 
-                if (response.ok) {
-                    this.conversations = await response.json();
-                }
+                this.conversations = response.data;
+                
             } catch (error) {
                 console.error('Error loading conversations:', error);
             }
         },
         async forwardMessage(message, targetconversationId) {
             try {
-                const response = await fetch(`http://localhost:3000/messages/${message.id}/forward`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
+                const response = await this.$axios.post(`/messages/${message.id}/forward`, 
+                    {
                         conversationId: targetconversationId
-                    })
-                });
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        }
+                    }
+                );
                 
-                if (response.ok) {
-                    // this.showingForwardModal = false;
-                    this.closeForwardDialog();
-                }
+                // this.showingForwardModal = false;
+                this.closeForwardDialog();
             } catch (error) {
                 console.error('Error forwarding message:', error);
             }
         },
+
+        async deleteMessage(messageId) {
+            try {
+                await this.$axios.delete(`/messages/${messageId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`
+                }
+                });
+                await this.loadConversation();
+            } catch (error) {
+                console.error('Error deleting message:', error);
+            }
+            },
 
         scrollToBottom() {
             this.$nextTick(() => {
@@ -238,7 +255,8 @@ export default {
             if (!photoUrl) return null;
             const cleanPath = photoUrl.replace(/\\/g, '/');
             const normalizedPath = cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath;
-            return `http://localhost:3000${normalizedPath}`;
+            // return `http://localhost:3000${normalizedPath}`;
+            return `${__API_URL__}${normalizedPath}`;
         }
     }
 }
@@ -286,7 +304,7 @@ export default {
             {{ msg.content }}
 
         <!-- Message status for sent messages -->
-        <span v-if="msg.senderId === authToken" class="message-status">
+        <span v-if="msg.senderUsername === username" class="message-status">
             <i class="bi" :class="msg.status === 'read' ? 'bi-check2-all' : 'bi-check2'"></i>
         </span>            
         <!-- Sender username for received messages -->
@@ -332,6 +350,10 @@ export default {
             </button>
             <button class="btn btn-sm btn-link" @click.stop="showForwardDialog(msg)">
                 <i class="bi bi-forward"></i>
+            </button>
+
+            <button class="btn btn-sm btn-link" @click.stop="deleteMessage(msg.id)">
+                <i class="bi bi-trash"></i>
             </button>
         </div>
     </div>
@@ -415,6 +437,12 @@ export default {
     background-color: white;
     border-top: 1px solid #ddd;
     margin-top: auto;
+}
+
+.message-content {
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-width: 200%;
 }
 
 .sent {
@@ -512,9 +540,11 @@ export default {
 }
 
 .message-status {
-    display: inline-block;
-    margin-left: 4px;
+    display: inline-block;   
     color: #8e8e8e;
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
 }
 
 .message-sender {

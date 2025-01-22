@@ -10,12 +10,14 @@ func (db *appdbimpl) GetMessages(conversationID string, limit, offset int) ([]Me
             m.id,
             m.conversation_id,
             m.sender_id,
+			u.username as sender_username,
             m.type,
             m.content,
             m.status,
             m.timestamp,
             m.reply_to_id
         FROM messages m
+		LEFT JOIN users u ON m.sender_id = u.id
         WHERE m.conversation_id = $1
         ORDER BY m.timestamp DESC
         LIMIT $2 OFFSET $3`
@@ -29,12 +31,14 @@ func (db *appdbimpl) GetMessages(conversationID string, limit, offset int) ([]Me
 	var messages []Message
 	for rows.Next() {
 		var msg Message
-		var replyToID sql.NullString // For handling nullable reply_to_id
+		var replyToID sql.NullString      // For handling nullable reply_to_id
+		var senderUsername sql.NullString // For handling nullable username
 
 		err := rows.Scan(
 			&msg.ID,
 			&msg.ConversationID,
 			&msg.SenderID,
+			&senderUsername,
 			&msg.Type,
 			&msg.Content,
 			&msg.Status,
@@ -43,6 +47,10 @@ func (db *appdbimpl) GetMessages(conversationID string, limit, offset int) ([]Me
 		)
 		if err != nil {
 			return nil, ErrDatabaseError
+		}
+
+		if senderUsername.Valid {
+			msg.SenderUsername = senderUsername.String
 		}
 
 		if replyToID.Valid {

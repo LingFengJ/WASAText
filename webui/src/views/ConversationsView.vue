@@ -19,8 +19,8 @@ export default {
       this.loading = true;
       try {
         console.log('Performing search for:', this.searchQuery);
-        const response = await fetch(
-          `http://localhost:3000/users/search?query=${encodeURIComponent(this.searchQuery)}`,
+        const response = await this.$axios.get(
+          `/users/search?query=${encodeURIComponent(this.searchQuery)}`,
           {
             headers: {
               'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
@@ -29,14 +29,12 @@ export default {
         );
 
         console.log('Search response status:', response.status);
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Search results:', data);
-          this.searchResults = data;
+        if (response.status === 200) {
+          console.log('Search results:', response.data);
+          this.searchResults = response.data;
           this.showResults = true;
         } else {
-          const errorText = await response.text();
-          console.error('Search failed:', response.status, errorText);
+          console.error('Search failed:', response.status, response.data);
           this.searchResults = [];
           this.showResults = false;
         }
