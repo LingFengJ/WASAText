@@ -7,6 +7,7 @@ WORKDIR /app
 COPY webui webui 
 
 WORKDIR /app/webui
+RUN npm install
 RUN npm run build-prod
 
 # Create final container
@@ -15,3 +16,5 @@ FROM nginx:stable
 ### Copy the build output to replace the default Nginx contents.
 COPY --from=builder /app/webui/dist /usr/share/nginx/html
 
+# docker build -t wasatext-frontend:latest -f Dockerfile.frontend .
+# docker run -it --rm -p 8080:80 wasatext-frontend:latest
