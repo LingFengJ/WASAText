@@ -10,10 +10,10 @@ import (
 
 func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	query := r.URL.Query().Get("query")
-	if query == "" {
-		http.Error(w, "Query parameter is required", http.StatusBadRequest)
-		return
-	}
+	// if query == "" {
+	// 	http.Error(w, "Query parameter is required", http.StatusBadRequest)
+	// 	return
+	// }
 
 	ctx.Logger.Info("Searching for users with query: ", query)
 

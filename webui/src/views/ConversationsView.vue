@@ -11,8 +11,21 @@ export default {
       searchQuery: '',
       searchResults: [],
       loading: false,
-      showResults: false
+      showResults: false,
+      error: null,
     }
+  },
+  created() {
+    const username = this.$route.query.username;
+    if (username) {
+        this.recipientName = username;
+    }
+    // Add click outside listener when component is created
+    document.addEventListener('click', this.handleClickOutside);
+  },
+  beforeDestroy() {
+      // Clean up the listener when component is destroyed
+      document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
     async performSearch() {
@@ -46,19 +59,64 @@ export default {
         this.loading = false;
       }
     },
-    startChat(username) {
-      // Instead of redirecting, we'll try to start a conversation
-      console.log('Starting chat with:', username);
-      this.searchQuery = '';
-      this.showResults = false;
-    }
+    async startChat(user) {
+      if (user.username === sessionStorage.getItem('username')) {
+        this.error = "You cannot start a chat with yourself";
+        setTimeout(() => this.error = null, 3000); // Clear error after 3 seconds
+        this.searchQuery = '';
+        this.showResults = false;
+        return;
+      }
+      try {
+          // First get all existing conversations
+          const convResponse = await this.$axios.get('/conversations', {
+              headers: {
+                  'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+              }
+          });
+
+          // Look for existing individual chat with this user
+          const existingChat = convResponse.data.find(conv => 
+              conv.type === 'individual' && conv.name === user.username
+          );
+
+          if (existingChat) {
+              // If chat exists, just navigate to it
+              this.$router.push(`/conversations/${existingChat.id}`);
+          } else {
+              // If no chat exists, redirect to NewConversation with pre-filled username
+              this.$router.push({
+                  path: '/new-conversation',
+                  query: { username: user.username }
+              });
+          }
+
+          // Clear search
+          this.searchQuery = '';
+          this.showResults = false;
+
+      } catch (error) {
+          console.error('Error checking conversations:', error);
+      }
+  },
+
+    handleClickOutside(event) {
+        if (!event.target.closest('.search-container')) {
+            this.showResults = false;
+        }
+    },
   }
 }
 </script>
 
 <template>
   <div class="conversations-view">
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
+      <!-- Add error alert -->
+        <div v-if="error" class="alert alert-danger position-absolute top-30 start-50 translate-middle-x mt-3">
+          {{ error }}
+        </div>
       <h1>Conversations</h1>
       <div class="search-container">
         <div class="input-group">

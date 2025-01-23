@@ -158,7 +158,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 
 	if err := rt.db.CreateMessage(message); err != nil {
 		ctx.Logger.WithError(err).Error("failed to create message")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, failed to create message", http.StatusInternalServerError)
 		return
 	}
 

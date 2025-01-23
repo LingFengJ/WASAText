@@ -22,6 +22,14 @@ export default {
             emojis: ['👍', '❤️', '😊', '😂', '😮', '😢'],
             replyingTo: null,
             uploadingImage: false,
+            newMemberUsername: '',
+            showAddMemberModal: false,
+            showGroupMenu: false,
+            newGroupName: '',
+            selectedGroupPhoto: null,
+            showUpdateNameModal: false,
+            availableUsers: [],         
+            forwardTarget: 'existing',   
         }
     },
     async created() {
@@ -30,6 +38,7 @@ export default {
         this.username = sessionStorage.getItem('username');
         console.log('Current username:', this.username);
         this.loadConversation();
+        document.addEventListener('click', this.closeGroupMenu);
     },
     methods: {
         async loadConversation() {
@@ -43,14 +52,28 @@ export default {
                 const data = response.data;
                 console.log('Conversation data:', data);
                 this.conversation = data.conversation;
-                // this.messages = data.messages;
-                this.messages = data.messages.map(msg => ({
-                    ...msg,
-                    reactions: msg.reactions || [],
-                    // Status should update based on backend response
-                    status: msg.status || 'sent'
-                }));
-                console.log('messages with reactions:', this.messages);
+                // Create a map of messages by ID for easy lookup
+                const messagesMap = new Map(data.messages.map(msg => [msg.id, msg]));
+
+                // Process messages and add reply content
+                this.messages = data.messages.map(msg => {
+                    const processed = {
+                        ...msg,
+                        reactions: msg.reactions || [],
+                        // status: msg.status || 'sent'
+                    };
+
+                    // If message is a reply, add the original message content
+                    if (msg.replyToId) {
+                        const replyTo = messagesMap.get(msg.replyToId);
+                        if (replyTo) {
+                            processed.replyTo = replyTo;
+                        }
+                    }
+
+                    return processed;
+                });
+                console.log('messages with reactions and replies:', this.messages);
 
             } catch (error) {
                 console.error('Error loading conversation:', error);
@@ -281,6 +304,23 @@ export default {
                 });
                 
                 this.conversations = response.data;
+
+
+                const usersResponse = await this.$axios.get(
+                `/users/search?query=${encodeURIComponent("")}`, // empty query to get all users
+                {
+                    headers: {
+                    'Authorization': `Bearer ${this.authToken}`
+                    }
+                }
+                );
+
+                this.availableUsers = usersResponse.data.filter(user => 
+                    user.username !== this.username && 
+                    !this.conversations.some(conv => 
+                        conv.type === 'individual' && conv.name === user.username
+                    )
+                );
                 
             } catch (error) {
                 console.error('Error loading conversations:', error);
@@ -306,6 +346,28 @@ export default {
             }
         },
 
+        async forwardToNewUser(username) {
+            try {
+                // First send a message to create the conversation
+                const response = await this.$axios.post('/conversations//messages', 
+                    {
+                        recipientName: username,
+                        content: this.selectedMessage.content,
+                        type: this.selectedMessage.type
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        }
+                    }
+                );
+                
+                this.closeForwardDialog();
+            } catch (error) {
+                console.error('Error forwarding to new user:', error);
+            }
+        },
+
         async deleteMessage(messageId) {
             try {
                 await this.$axios.delete(`/messages/${messageId}`, {
@@ -323,7 +385,8 @@ export default {
             this.$nextTick(() => {
                 const container = this.$refs.messageContainer;
                 if (container) {
-                    container.scrollTop = container.scrollHeight;
+                    // container.scrollTop = container.scrollHeight;
+                    container.scrollToBottom = container.scrollHeight;
                 }
             });
         },
@@ -333,7 +396,117 @@ export default {
             const normalizedPath = cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath;
             // return `http://localhost:3000${normalizedPath}`;
             return `${__API_URL__}${normalizedPath}`;
-        }
+        },
+        async addMember() {
+            try {
+                await this.$axios.post(`/groups/${this.id}/members`, 
+                    { username: this.newMemberUsername },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`
+                        }
+                    }
+                );
+                // Close modal and reset input
+                // document.getElementById('addMemberModal').modal('hide');
+                this.showAddMemberModal = false;
+                this.newMemberUsername = '';
+                // Optionally reload conversation
+                await this.loadConversation();
+            } catch (error) {
+                console.error('Error adding member:', error);
+                this.error = 'Failed to add member';
+            }
+        },
+
+        async leaveGroup() {
+            if (!confirm('Are you sure you want to leave this group?')) return;
+            
+            try {
+                await this.$axios.post(`/groups/${this.id}/leave`, null, {
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`
+                    }
+                });
+                // Redirect to conversations list
+                this.$router.push('/conversations');
+            } catch (error) {
+                console.error('Error leaving group:', error);
+            }
+        },
+
+        closeGroupMenu(event) {
+            if (!event.target.closest('.dropdown')) {
+                this.showGroupMenu = false;
+            }
+        },
+        async updateGroupName() {
+            if (!this.newGroupName) return;
+            
+            try {
+                await this.$axios.put(`/groups/${this.id}/name`, 
+                    {
+                        name: this.newGroupName
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                
+                this.showUpdateNameModal = false;
+                await this.loadConversation();
+                this.newGroupName = '';
+                
+            } catch (error) {
+                console.error('Error updating group name:', error);
+                this.error = 'Failed to update group name';
+            }
+        },
+
+        async updateGroupPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                this.error = 'Please select an image file';
+                return;
+            }
+
+            try {
+                // Read the file as binary data
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        await this.$axios.put(`/groups/${this.id}/photo`, 
+                            e.target.result,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${this.authToken}`,
+                                    'Content-Type': file.type
+                                }
+                            }
+                        );
+                        
+                        await this.loadConversation();
+                    } catch (error) {
+                        console.error('Error updating group photo:', error);
+                        this.error = 'Failed to update group photo';
+                    }
+                };
+
+                reader.onerror = () => {
+                    this.error = 'Failed to read the selected file';
+                };
+
+                reader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error('Error handling photo:', error);
+                this.error = 'Failed to process the selected file';
+            }
+        },
     }
 }
 </script>
@@ -352,62 +525,158 @@ export default {
                     />
                     <i v-else class="bi" :class="conversation.type === 'group' ? 'bi-people-fill' : 'bi-person-circle'"></i>
                 </div>
-                <div>
-                    <h5 class="mb-0">{{ conversation.name }}</h5>
-                    <small>{{ conversation.type === 'group' ? 'Group Chat' : 'Direct Message' }}</small>
+            <div>
+            <h5 class="mb-0">{{ conversation.name }}</h5>
+                <small>{{ conversation.type === 'group' ? 'Group Chat' : 'Direct Message' }}</small>
+            </div>
+
+            <div v-if="conversation && conversation.type === 'group'" class="group-actions">
+                <div class="dropdown">
+                    <button class="btn btn-secondary" type="button" @click="showGroupMenu = !showGroupMenu">
+                        Group Actions <i class="bi bi-three-dots"></i>
+                    </button>
+                    <!-- Show menu based on showGroupMenu state -->
+                    <ul class="dropdown-menu" :class="{ 'show': showGroupMenu }">
+                        <li>
+                            <a class="dropdown-item" href="#" @click.prevent="showUpdateNameModal = true">
+                                <i class="bi bi-pencil"></i> Change Group Name
+                            </a>
+                        </li>
+                        <li>
+                            <label class="dropdown-item" style="cursor: pointer;">
+                                <i class="bi bi-camera"></i> Change Group Photo
+                                <input 
+                                    type="file" 
+                                    class="d-none" 
+                                    accept="image/*"
+                                    @change="updateGroupPhoto"
+                                >
+                            </label>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" @click.prevent="showAddMemberModal = true">
+                                <i class="bi bi-person-plus"></i> Add Member
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" @click.prevent="leaveGroup">
+                                <i class="bi bi-box-arrow-right"></i> Leave Group
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
-        </div>
-
-        <!-- Loading State -->
-        <div v-if="loading" class="text-center p-4">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+            <!-- Member Modal -->
+            <div v-if="showAddMemberModal" class="modal" style="display: block">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add Member</h5>
+                            <button type="button" class="btn-close" @click="showAddMemberModal = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="text" class="form-control" v-model="newMemberUsername" placeholder="Enter username">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @click="showAddMemberModal = false">Cancel</button>
+                            <button type="button" class="btn btn-primary" @click="addMember">Add</button>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Update Group Name Modal -->
+            <div v-if="showUpdateNameModal" class="modal" style="display: block">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Update Group Name</h5>
+                            <button type="button" class="btn-close" @click="showUpdateNameModal = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                v-model="newGroupName" 
+                                placeholder="Enter new group name"
+                            >
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @click="showUpdateNameModal = false">Cancel</button>
+                            <button type="button" class="btn btn-primary" @click="updateGroupName">Update</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        
-        <!-- Error State -->
-        <div v-else-if="error" class="alert alert-danger m-3">
-            {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="text-center p-4">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
         </div>
+    </div>
+    
+    <!-- Error State -->
+    <div v-else-if="error" class="alert alert-danger m-3">
+        {{ error }}
+    </div>
 
     <!-- Messages -->
     <div class="messages" ref="messageContainer">
         <div v-for="msg in messages" :key="msg.id" 
             class = "message p-2 rounded mb-2"
-            :class="msg.senderUsername === username ? 'sent' : 'received'">
+            :class="[
+                msg.senderUsername === username ? 'sent' : 'received',
+                msg.replyTo ? 'has-reply' : ''
+                ]">
 
             <!-- Show reply reference if this message is a reply -->
-            <div v-if="msg.replyTo" class="reply-reference mb-2">
+            <div v-if="msg.replyTo" class="reply-reference">
                 <div class="reply-content">
-                    <small class="text-muted">Replying to {{ msg.replyTo.senderUsername }}</small>
-                    <div class="original-message">
+                    <small class="reply-username">
+                        Replying to {{ msg.replyTo.senderUsername }}
+                    </small>
+
+                    <div v-if="msg.replyTo.type === 'photo'" class="reply-photo-indicator">
+                        <img :src="getMessageContent(msg.replyTo)" 
+                            class="reply-photo-preview" 
+                            alt="Reply photo preview">
+                    </div>     
+                    <div v-else class="original-message">
                         {{ msg.replyTo.content }}
                     </div>
                 </div>
             </div>
-        <div class="message-content">
-            <!-- Show image if message is a photo -->
-            <img v-if="msg.type === 'photo'" 
-                :src="getMessageContent(msg)" 
-         class="message-image" 
-         alt="Sent photo"
-         @error="error = 'Failed to load image'"
-         >
-            <!-- Show message content if not a photo -->
-             <template v-else>
-                {{ msg.content }}
-            </template>
+
+    <div class="message-content">
+        <!-- Show image if message is a photo -->
+        <img v-if="msg.type === 'photo'" 
+            :src="getMessageContent(msg)" 
+            class="message-image" 
+            alt="Sent photo"
+            @error="error = 'Failed to load image'"
+            >
+        <!-- Show message content if not a photo -->
+        <template v-else>
+            {{ msg.content }}
+        </template>
 
         <!-- Message status for sent messages -->
         <span v-if="msg.senderUsername === username" class="message-status">
-            <i class="bi" :class="msg.status === 'read' ? 'bi-check2-all' : 'bi-check2'"></i>
+            <i class="bi" :class="{
+                'bi-check2-all': msg.status === 'read',
+                'bi-check2': msg.status === 'received',
+                'd-none': msg.status === 'sent'
+            }"></i>
         </span>            
         <!-- Sender username for received messages -->
         <div v-else class="message-sender">
             {{ msg.senderUsername }}
         </div>
-        </div>
+    </div>
 
 
 
@@ -473,18 +742,19 @@ export default {
                 </button>
             </div>
         </div>
-        <form @submit.prevent="sendMessage">
-            <!-- Image upload button -->
-            <label class="btn btn-outline-secondary me-2 mb-0" :class="{ disabled: uploadingImage }">
-                <i class="bi bi-image"></i>
-                <input type="file" 
-                    accept="image/*" 
-                    class="d-none" 
-                    @change="handleImageUpload"
+        <form @submit.prevent="sendMessage" class="message input-form">
+                       
+            <div class="input-group">
+                <!-- Image upload button -->  
+                <label class="btn btn-outline-secondary me-2 mb-0" :class="{ disabled: uploadingImage }">
+                    <i class="bi bi-image"></i>
+                    <input type="file" 
+                        accept="image/*" 
+                        class="d-none" 
+                        @change="handleImageUpload"
                     :disabled="uploadingImage">
                 </label>
-
-            <div class="input-group">
+                <!-- Message input -->
                 <input 
                     type="text" 
                     class="form-control" 
@@ -515,14 +785,57 @@ export default {
           <button type="button" class="btn-close" @click="closeForwardDialog"></button>
         </div>
         <div class="modal-body">
-          <div class="list-group">
-            <button v-for="conv in conversations" 
-                    :key="conv.id"
-                    class="list-group-item list-group-item-action"
-                    @click="forwardMessage(selectedMessage, conv.id)">
-              {{ conv.name }}
-            </button>
-          </div>
+
+            <!-- Toggle buttons -->
+            <div class="btn-group w-100 mb-3">
+                <button 
+                    class="btn"
+                    :class="forwardTarget === 'existing' ? 'btn-primary' : 'btn-outline-primary'"
+                    @click="forwardTarget = 'existing'">
+                    Existing Chats
+                </button>
+                <button 
+                    class="btn"
+                    :class="forwardTarget === 'new' ? 'btn-primary' : 'btn-outline-primary'"
+                    @click="forwardTarget = 'new'">
+                    New Chat
+                </button>
+            </div>
+
+            <!-- Existing conversations -->
+            <div v-if="forwardTarget === 'existing'" class="list-group">
+                <button v-for="conv in conversations" 
+                        :key="conv.id"
+                        class="list-group-item list-group-item-action d-flex align-items-center"
+                        @click="forwardMessage(selectedMessage, conv.id)">
+                    <i class="bi me-2" 
+                        :class="conv.type === 'group' ? 'bi-people-fill' : 'bi-person-circle'">
+                    </i>
+                    {{ conv.name }}
+                    <span v-if="conv.type === 'group'" class="text-muted ms-2">(Group)</span>
+                </button>
+            </div>
+
+            <!-- New users -->
+            <div v-else class="list-group">
+                <button v-for="user in availableUsers" 
+                        :key="user.id"
+                        class="list-group-item list-group-item-action d-flex align-items-center"
+                        @click="forwardToNewUser(user.username)">
+                    <i class="bi bi-person-circle me-2"></i>
+                    {{ user.username }}
+                </button>
+            </div>
+            <!-- Empty state messages -->
+            <div v-if="forwardTarget === 'existing' && conversations.length === 0" 
+                    class="text-center text-muted p-3">
+                No existing conversations
+            </div>
+            <div v-if="forwardTarget === 'new' && availableUsers.length === 0" 
+                    class="text-center text-muted p-3">
+                No new users available
+            </div>
+
         </div>
       </div>
     </div>
@@ -687,22 +1000,44 @@ export default {
 }
 
 .sent .message-status {
-    color: #fff;
+    color: rgba(136, 136, 238, 0.933)
 }
 
 .reply-reference {
-    background-color: rgba(0, 0, 0, 0.05);
+    /* background-color: rgba(0, 0, 0, 0.05);
     padding: 8px;
     border-radius: 4px;
+    margin-bottom: 8px; */
+    background-color: rgba(0, 0, 0, 0.03);
+    padding: 8px 12px;
+    border-radius: 8px;
     margin-bottom: 8px;
+    border-left: 3px solid #0d6efd;
+    font-size: 0.9em;
 }
 
-.reply-reference .original-message {
+.reply-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+
+.original-message {
+    color: #666;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;    
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* .reply-reference .original-message {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: #666;
-}
+} */
 
 .reply-preview {
     border-bottom: 1px solid #dee2e6;
@@ -714,4 +1049,67 @@ export default {
     text-overflow: ellipsis;
     max-width: 300px;
 }
+
+/* Style for photo replies */
+.reply-photo-preview {
+    max-height: 50px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.group-actions {
+    margin-left: auto;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 1000;
+    background-color: white;
+    border: 1px solid rgba(0,0,0,.15);
+    border-radius: 0.25rem;
+    padding: 0.5rem 0;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.modal {
+    background-color: rgba(0,0,0,0.5);
+}
+
+.dropdown-item input[type="file"] {
+    position: absolute;
+    width: 0;
+    height: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+}
+
+.modal-body .list-group {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.list-group-item i {
+    font-size: 1.2rem;
+    color: #6c757d;
+}
+
+.list-group-item:hover i {
+    color: #0d6efd;
+}
+
 </style>

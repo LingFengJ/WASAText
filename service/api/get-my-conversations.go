@@ -49,22 +49,92 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 			continue
 		}
 
-		// // Check rows.Err after GetMessages query
-		// if err = rows.Err(); err != nil {
-		// 	ctx.Logger.WithError(err).Error("error checking rows")
-		// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
-		// 	return
-		// }
+		// Get conversation members for group status check
+		members, err := rt.db.GetConversationMembers(conv.ID)
+		if err != nil {
+			ctx.Logger.WithError(err).Error("failed to get conversation members")
+			continue
+		}
 
 		for _, msg := range messages {
-			if msg.SenderID != ctx.UserID && msg.Status == "sent" {
-				err := rt.db.UpdateMessageStatus(msg.ID, ctx.UserID, "received")
+			if msg.SenderID == ctx.UserID {
+				continue
+			}
+
+			// Update status to "received" for any unseen message
+			if msg.Status == "sent" {
+				err = rt.db.UpdateMessageStatus(msg.ID, ctx.UserID, "received")
 				if err != nil {
 					ctx.Logger.WithError(err).Error("failed to update message status")
+					continue
+				}
+			}
+
+			// Get all statuses for this message
+			statuses, err := rt.db.GetMessageStatus(msg.ID)
+			if err != nil {
+				ctx.Logger.WithError(err).Error("failed to get message statuses")
+				continue
+			}
+
+			// Calculate aggregate status
+			receiverCount := 0
+			for _, member := range members {
+				if member.UserID == msg.SenderID {
+					continue
+				}
+				receiverCount++
+			}
+
+			allReceived := true
+			for _, status := range statuses {
+				if status.UserID == msg.SenderID {
+					continue
+				}
+				if status.Status != "received" && status.Status != "read" {
+					allReceived = false
+					break
+				}
+			}
+			// Update the message's aggregate status if needed
+			if allReceived && msg.Status == "sent" && msg.Status != "read" {
+				err = rt.db.UpdateMessageAggregateStatus(msg.ID, "received")
+				if err != nil {
+					ctx.Logger.WithError(err).Error("failed to update message aggregate status")
 				}
 			}
 		}
 	}
+
+	// for _, msg := range messages {
+	// 	if msg.SenderID != ctx.UserID && msg.Status == "sent" {
+	// 		if conv.Type == database.ConversationTypeGroup {
+	// 			// check if all members have received for group
+	// 			allReceived := true
+	// 			for _, member := range members {
+	// 				if member.UserID != ctx.UserID &&
+	// 				   member.LastReadAt.Before(msg.Timestamp){
+	// 					allReceived = false
+	// 					break
+	// 				   }
+	// 			}
+
+	// 			if allReceived {
+	// 				err := rt.db.UpdateMessageStatus(msg.ID, ctx.UserID, "received")
+	// 				if err != nil {
+	// 					ctx.Logger.WithError(err).Error("failed to update message status")
+	// 				}
+	// 			}
+	// 		} else{
+	// 			// For individual conversations, update status to "received"
+	// 			err := rt.db.UpdateMessageStatus(msg.ID, ctx.UserID, "received")
+	// 			if err != nil {
+	// 				ctx.Logger.WithError(err).Error("failed to update message status")
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// }
 
 	// Send response
 	w.Header().Set("Content-Type", "application/json")

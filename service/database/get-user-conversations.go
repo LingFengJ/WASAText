@@ -6,6 +6,18 @@ import (
 
 // GetUserConversations retrieves all conversations for a user
 func (db *appdbimpl) GetUserConversations(userID string) ([]Conversation, error) {
+
+	// Start a transaction since we'll be updating last_read_at
+	tx, err := db.c.Begin()
+	if err != nil {
+		return nil, ErrDatabaseError
+	}
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil {
+			err = ErrDatabaseError
+		}
+	}()
+
 	query := `
         WITH LastMessages AS (
             SELECT 
@@ -119,6 +131,23 @@ func (db *appdbimpl) GetUserConversations(userID string) ([]Conversation, error)
 	}
 
 	if err = rows.Err(); err != nil {
+		return nil, ErrDatabaseError
+	}
+
+	// After getting conversations, update last_read_at for each conversation
+	updateQuery := `
+        UPDATE conversation_members 
+        SET last_read_at = CURRENT_TIMESTAMP
+        WHERE user_id = $1 AND conversation_id = $2`
+
+	for _, conv := range conversations {
+		_, err := tx.Exec(updateQuery, userID, conv.ID)
+		if err != nil {
+			return nil, ErrDatabaseError
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
 		return nil, ErrDatabaseError
 	}
 

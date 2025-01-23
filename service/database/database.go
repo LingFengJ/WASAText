@@ -64,6 +64,7 @@ type AppDatabase interface {
 	AddConversationMember(conversationID, userID string) error
 	RemoveConversationMember(conversationID, userID string) error
 	GetConversationMembers(conversationID string) ([]ConversationMember, error)
+	UpdateLastReadTime(conversationID, userID string) error
 
 	// // Message management
 	GetMessages(conversationID string, limit, offset int) ([]Message, error)
@@ -78,6 +79,7 @@ type AppDatabase interface {
 	// // Message status
 	UpdateMessageStatus(messageID, userID, status string) error
 	GetMessageStatus(messageID string) ([]MessageStatus, error)
+	UpdateMessageAggregateStatus(messageID string, status string) error
 }
 
 type appdbimpl struct {
@@ -137,7 +139,7 @@ const (
     CREATE TABLE IF NOT EXISTS message_status (
         message_id TEXT,
         user_id TEXT,
-        status TEXT NOT NULL CHECK (status IN ('received', 'read')),
+        status TEXT NOT NULL CHECK (status IN ('sent', 'received', 'read')),
         updated_at TIMESTAMP NOT NULL,
         PRIMARY KEY (message_id, user_id),
         FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,

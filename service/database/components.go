@@ -65,6 +65,6 @@ type ConversationMember struct {
 type MessageStatus struct {
 	MessageID string    `json:"messageId"`
 	UserID    string    `json:"userId"`
-	Status    string    `json:"status"` // "received" or "read"
+	Status    string    `json:"status"` // "sent", "received" or "read"
 	UpdatedAt time.Time `json:"updatedAt"`
 }

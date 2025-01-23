@@ -73,7 +73,7 @@ func (db *appdbimpl) CreateMessage(msg *Message) error {
 		_, err = tx.Exec(`
             INSERT INTO message_status (
                 message_id, user_id, status, updated_at
-            ) VALUES (?, ?, 'received', ?)`,
+            ) VALUES (?, ?, 'sent', ?)`,
 			msg.ID, userID, time.Now(),
 		)
 		if err != nil {
