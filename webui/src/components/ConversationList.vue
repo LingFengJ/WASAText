@@ -93,8 +93,11 @@ export default {
                             </small>
                         </div>
                         <p class="mb-1" v-if="conv.lastMessage">
-                            <i v-if="conv.lastMessage.type === 'photo'" class="bi bi-image me-1"></i>
-                            {{ conv.lastMessage.content }}
+                            <span v-if="conv.lastMessage.type === 'photo'" class="d-flex align-items-center">
+                                <i class="bi bi-image me-1"></i>
+                                <span class="text-muted">Photo</span>
+                            </span>
+                            <span v-else>{{ conv.lastMessage.content }}</span>
                         </p>
                         <small>{{ conv.type === 'group' ? 'Group' : 'Direct Message' }}</small>
                     </div>
@@ -144,6 +147,11 @@ export default {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 250px;  /* Adjust based on your layout */
+}
+
+.bi-image {
+    color: #0d6efd;
+    font-size: 1.1em;
 }
 </style>
 

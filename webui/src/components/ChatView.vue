@@ -19,7 +19,9 @@ export default {
             showingForwardModal: false,
             selectedMessage: null,
             conversations: [],
-            emojis: ['👍', '❤️', '😊', '😂', '😮', '😢']
+            emojis: ['👍', '❤️', '😊', '😂', '😮', '😢'],
+            replyingTo: null,
+            uploadingImage: false,
         }
     },
     async created() {
@@ -61,11 +63,17 @@ export default {
             if (!this.newMessage.trim()) return;
             
             try {
-                const response = await this.$axios.post(`/conversations/${this.id}/messages`, 
-                    {
+                const messageData = {
                     content: this.newMessage,
                     type: 'text'
-                    },    
+                };
+
+                if (this.replyingTo) {
+                    messageData.replyToId = this.replyingTo.id;
+                }
+
+                const response = await this.$axios.post(`/conversations/${this.id}/messages`, 
+                    messageData,    
                     {                
                     headers: {
                         'Authorization': `Bearer ${this.authToken}`,
@@ -75,6 +83,7 @@ export default {
                 );
                 
                 this.newMessage = '';
+                this.replyingTo = null; // Clear reply state
                 await this.loadConversation();
                 this.scrollToBottom();
             } catch (error) {
@@ -104,6 +113,73 @@ export default {
                     }
             
             }
+        },
+
+        getMessageContent(msg) {
+            if (msg.type === 'photo') {
+                return `data:image/jpeg;base64,${msg.content}`;
+            }
+            return msg.content;
+        },
+
+        async handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                this.error = 'Please select an image file';
+                return;
+            }
+
+            this.uploadingImage = true;
+            try {
+                // Convert image to base64
+                const base64Image = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        // Get the base64 string without the data URL prefix
+                        const base64String = reader.result.split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                // Send as JSON with base64 content
+                const response = await this.$axios.post(
+                    `/conversations/${this.id}/messages`,
+                    {
+                        type: 'photo',
+                        content: base64Image
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.authToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (this.replyingTo) {
+                    this.replyingTo = null;
+                }
+
+                await this.loadConversation();
+                this.scrollToBottom();
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                this.error = 'Failed to upload image';
+            } finally {
+                this.uploadingImage = false;
+            }
+        },
+
+        // Add new method for handling replies
+        setReplyTo(message) {
+            this.replyingTo = message;
+        },
+
+        cancelReply() {
+            this.replyingTo = null;
         },
 
         showReactionPicker(message) {
@@ -299,9 +375,29 @@ export default {
     <div class="messages" ref="messageContainer">
         <div v-for="msg in messages" :key="msg.id" 
             class = "message p-2 rounded mb-2"
-            :class="msg.senderId === authToken ? 'sent' : 'received'">
+            :class="msg.senderUsername === username ? 'sent' : 'received'">
+
+            <!-- Show reply reference if this message is a reply -->
+            <div v-if="msg.replyTo" class="reply-reference mb-2">
+                <div class="reply-content">
+                    <small class="text-muted">Replying to {{ msg.replyTo.senderUsername }}</small>
+                    <div class="original-message">
+                        {{ msg.replyTo.content }}
+                    </div>
+                </div>
+            </div>
         <div class="message-content">
-            {{ msg.content }}
+            <!-- Show image if message is a photo -->
+            <img v-if="msg.type === 'photo'" 
+                :src="getMessageContent(msg)" 
+         class="message-image" 
+         alt="Sent photo"
+         @error="error = 'Failed to load image'"
+         >
+            <!-- Show message content if not a photo -->
+             <template v-else>
+                {{ msg.content }}
+            </template>
 
         <!-- Message status for sent messages -->
         <span v-if="msg.senderUsername === username" class="message-status">
@@ -345,6 +441,9 @@ export default {
         </div>
         <!-- Message actions (emoji and forward buttons) -->
         <div class="message-actions">
+            <button class="btn btn-sm btn-link" @click.stop="setReplyTo(msg)">
+                <i class="bi bi-reply"></i>
+            </button>
             <button class="btn btn-sm btn-link" @click.stop="showReactionPicker(msg)">
                 <i class="bi bi-emoji-smile"></i>
             </button>
@@ -362,7 +461,29 @@ export default {
 
     <!-- Message input -->
     <div class="message-input">
+        <!-- Reply Preview -->
+        <div v-if="replyingTo" class="reply-preview p-2 bg-light border-top">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="text-muted">Replying to {{ replyingTo.senderUsername }}</small>
+                    <div class="reply-preview-content">{{ replyingTo.content }}</div>
+                </div>
+                <button class="btn btn-sm btn-link" @click="cancelReply">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
         <form @submit.prevent="sendMessage">
+            <!-- Image upload button -->
+            <label class="btn btn-outline-secondary me-2 mb-0" :class="{ disabled: uploadingImage }">
+                <i class="bi bi-image"></i>
+                <input type="file" 
+                    accept="image/*" 
+                    class="d-none" 
+                    @change="handleImageUpload"
+                    :disabled="uploadingImage">
+                </label>
+
             <div class="input-group">
                 <input 
                     type="text" 
@@ -430,6 +551,12 @@ export default {
     max-width: 70%;
 }
 
+.message-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 4px;
+}
+
 .message-input {
     position: sticky;
     bottom: 0;
@@ -447,8 +574,7 @@ export default {
 
 .sent {
     margin-left: auto;
-    background-color: #0d6efd;
-    color: white;
+    background-color: white;
 }
 
 .received {
@@ -458,7 +584,6 @@ export default {
 
 .message-actions {
     position: absolute;
-    right: -60px;
     top: 50%;
     transform: translateY(-50%);
     display: none;
@@ -466,6 +591,14 @@ export default {
     border-radius: 20px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     padding: 4px;
+}
+
+.sent .message-actions {
+    right: calc(97% + 5px);
+}
+
+.received .message-actions {
+    left: calc(97% + 5px);
 }
 
 .message:hover .message-actions {
@@ -555,5 +688,30 @@ export default {
 
 .sent .message-status {
     color: #fff;
+}
+
+.reply-reference {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.reply-reference .original-message {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #666;
+}
+
+.reply-preview {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.reply-preview-content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
 }
 </style>

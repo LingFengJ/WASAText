@@ -2,9 +2,12 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/LingFengJ/WASAText/service/api/reqcontext"
@@ -20,19 +23,69 @@ type SendMessageRequest struct {
 	RecipientName string   `json:"recipientName,omitempty"` // Required only for first individual message
 	GroupName     string   `json:"groupName,omitempty"`     // Optional, only for group creation
 	Members       []string `json:"members,omitempty"`       // Optional, only for group creation
+	ReplyToID     string   `json:"replyToId,omitempty"`     // Optional, only for replies
 }
 
 func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params, ctx reqcontext.RequestContext) {
 	conversationID := ps.ByName("conversationId")
 
-	// Parse request body
 	var req SendMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
+
+	// Handle different content types
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		// Parse form data
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+			return
+		}
+
+		file, _, err := r.FormFile("content")
+		if err != nil {
+			http.Error(w, "Content file required", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			ctx.Logger.WithError(err).Error("failed to read file")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// Convert to base64
+		base64Content := base64.StdEncoding.EncodeToString(fileBytes)
+
+		req = SendMessageRequest{
+			Content:       base64Content,
+			Type:          "photo",
+			ReplyToID:     r.FormValue("replyToId"),
+			RecipientName: r.FormValue("recipientName"),
+			GroupName:     r.FormValue("groupName"),
+		}
+
+		if members := r.Form["members[]"]; len(members) > 0 {
+			req.Members = members
+		}
+	} else {
+		// Handle JSON request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// If it's a photo type message, validate base64 content
+		if req.Type == "photo" {
+			// Verify that the content is valid base64
+			if _, err := base64.StdEncoding.DecodeString(req.Content); err != nil {
+				http.Error(w, "Invalid base64 image content", http.StatusBadRequest)
+				return
+			}
+		}
 	}
 
-	// Validate message
+	// Validate message content
 	if req.Content == "" {
 		http.Error(w, "Message content required", http.StatusBadRequest)
 		return
@@ -42,18 +95,18 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// Check if this is a new conversation
+	// Handle new conversation creation
 	if conversationID == "" {
 		var err error
-		// Check if it's a group creation request
 		if req.GroupName != "" {
+			// Group chat creation
 			if len(req.Members) == 0 {
 				http.Error(w, "Members required for group creation", http.StatusBadRequest)
 				return
 			}
 			conversationID, err = rt.createNewGroup(ctx.UserID, req.GroupName, req.Members)
 		} else {
-			// Original individual chat logic
+			// Individual chat creation
 			if req.RecipientName == "" {
 				http.Error(w, "Recipient name required for new conversation", http.StatusBadRequest)
 				return
@@ -71,7 +124,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 			return
 		}
 	} else {
-		// For existing conversations, verify user is still a member
+		// Verify membership for existing conversation
 		isMember, err := rt.isConversationMember(conversationID, ctx.UserID)
 		if err != nil {
 			ctx.Logger.WithError(err).Error("failed to check conversation membership")
@@ -100,6 +153,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 		Content:        req.Content,
 		Status:         "sent",
 		Timestamp:      time.Now(),
+		ReplyToID:      req.ReplyToID,
 	}
 
 	if err := rt.db.CreateMessage(message); err != nil {

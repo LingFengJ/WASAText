@@ -20,12 +20,12 @@ export default {
                         name: this.newUsername
                     },
                     {
-                    headers: {
-                        'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/json'
-                    },
-
-                });
+                        headers: {
+                            'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
+                            'Content-Type': 'application/json'
+                        },
+                    }
+                );
 
                 sessionStorage.setItem('username', this.newUsername);
                 this.success = 'Username updated successfully';
@@ -38,6 +38,7 @@ export default {
                         case 400:
                             console.error('Bad request');
                             this.error = 'Bad request';
+                            break;  // Added missing break
                         case 409:
                             console.error('Conflict: username already taken', error.response.data);
                             this.error = 'Username already taken';
@@ -63,31 +64,54 @@ export default {
         async updatePhoto() {
             if (!this.selectedPhoto) return;
 
-            const formData = new FormData();
-            formData.append('photo', this.selectedPhoto);
-
             try {
-                const response = await this.$axios.put('/users/me/photo', 
-                formData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
-                    }
-                });
+                // Read the file as binary data
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const response = await this.$axios.put('/users/me/photo', 
+                            e.target.result,  // Send binary data directly
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
+                                    'Content-Type': this.selectedPhoto.type  // Use the file's MIME type
+                                }
+                            }
+                        );
 
-                this.success = 'Profile photo updated successfully';
-                this.error = null;
+                        this.success = 'Profile photo updated successfully';
+                        this.error = null;
+                    } catch (error) {
+                        console.error('Error updating photo:', error);
+                        this.error = error.response?.data || 'Failed to update profile photo';
+                        this.success = null;
+                    }
+                };
+
+                reader.onerror = () => {
+                    this.error = 'Failed to read the selected file';
+                    this.success = null;
+                };
+
+                // Read the file as binary data
+                reader.readAsArrayBuffer(this.selectedPhoto);
 
             } catch (error) {
-                console.error('Error updating photo:', error);
-                this.error = 'Failed to update profile photo';
+                console.error('Error handling photo:', error);
+                this.error = 'Failed to process the selected file';
                 this.success = null;
             }
         },
 
         onPhotoSelected(event) {
-            this.selectedPhoto = event.target.files[0];
-            if (this.selectedPhoto) {
+            const file = event.target.files[0];
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    this.error = 'Please select an image file';
+                    this.success = null;
+                    return;
+                }
+                this.selectedPhoto = file;
                 this.updatePhoto();
             }
         }
