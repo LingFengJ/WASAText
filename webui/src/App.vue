@@ -24,6 +24,10 @@ export default {
             localStorage.clear();
             sessionStorage.clear();
             this.$router.push('/login');
+            location.reload();
+        },
+        refresh() {
+            location.reload();
         },
         createNewChat() {
             this.$router.push('/new-conversation');

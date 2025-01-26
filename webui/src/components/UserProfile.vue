@@ -30,7 +30,7 @@ export default {
                 sessionStorage.setItem('username', this.newUsername);
                 this.success = 'Username updated successfully';
                 this.error = null;
-
+                location.reload();
             } catch (error) {
                 if (error.response){    
                     const statusCode = error.response.status;

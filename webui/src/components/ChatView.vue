@@ -60,7 +60,6 @@ export default {
                     const processed = {
                         ...msg,
                         reactions: msg.reactions || [],
-                        // status: msg.status || 'sent'
                     };
 
                     // If message is a reply, add the original message content
@@ -370,14 +369,31 @@ export default {
 
         async deleteMessage(messageId) {
             try {
+
+                // Check if this is the last message
+                const isLastMessage = this.messages.length === 1;
+
                 await this.$axios.delete(`/messages/${messageId}`, {
                 headers: {
                     'Authorization': `Bearer ${this.authToken}`
                 }
                 });
-                await this.loadConversation();
+
+                if (isLastMessage) {
+                    // If it was the last message, navigate back without trying to load the conversation
+                    this.$router.push('/conversations');
+                } else {
+                    // Only try to load conversation if it wasn't the last message
+                    await this.loadConversation();
+                }
+
             } catch (error) {
-                console.error('Error deleting message:', error);
+                if (error.response && (error.response.status === 404|| error.response.status === 403)) {
+                    // Conversation was deleted, navigate back to conversations
+                    this.$router.push('/conversations');
+                } else {
+                    console.error('Error deleting message:', error);
+                }
             }
             },
 
@@ -394,7 +410,6 @@ export default {
             if (!photoUrl) return null;
             const cleanPath = photoUrl.replace(/\\/g, '/');
             const normalizedPath = cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath;
-            // return `http://localhost:3000${normalizedPath}`;
             return `${__API_URL__}${normalizedPath}`;
         },
         async addMember() {
@@ -1031,13 +1046,6 @@ export default {
     text-overflow: ellipsis;
     max-width: 100%;
 }
-
-/* .reply-reference .original-message {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: #666;
-} */
 
 .reply-preview {
     border-bottom: 1px solid #dee2e6;
