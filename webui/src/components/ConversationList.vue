@@ -4,11 +4,19 @@ export default {
         return {
             conversations: [],
             loading: true,
-            error: null
+            error: null,
+            IntervalId: null
         }
     },
     async mounted() {
         await this.loadConversations();
+        this.IntervalId = setInterval(this.loadConversations, 3000);
+    },
+
+    beforeUnmount(){
+        if (this.IntervalId) {
+            clearInterval(this.IntervalId);
+        }
     },
     methods: {
         getPhotoUrl(conv) {

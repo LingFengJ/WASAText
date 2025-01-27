@@ -30,6 +30,7 @@ export default {
             showUpdateNameModal: false,
             availableUsers: [],         
             forwardTarget: 'existing',   
+            intervalId: null,
         }
     },
     async created() {
@@ -37,8 +38,33 @@ export default {
         this.authToken = sessionStorage.getItem('authToken');
         this.username = sessionStorage.getItem('username');
         console.log('Current username:', this.username);
-        this.loadConversation();
+        await this.loadConversation();
         document.addEventListener('click', this.closeGroupMenu);
+    },
+    mounted() {
+        this.intervalId = setInterval(this.loadConversation, 3000); // Set up interval
+    },
+    beforeUnmount() {
+        if (this.intervalId){
+            clearInterval(this.intervalId);
+        }
+
+        document.removeEventListener('click', this.closeGroupMenu);
+    },
+    watch: {
+        // Watch for route changes
+        $route(to, from) {
+            if (to.name !== 'ChatView') {
+                // If navigating away from ChatView, clear the interval
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+            } else if (to.name === 'ChatView' && !this.intervalId) {
+                // If navigating back to ChatView, set up the interval again
+                this.intervalId = setInterval(this.loadConversation, 3000);
+            }
+        }
     },
     methods: {
         async loadConversation() {
