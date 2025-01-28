@@ -45,6 +45,11 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
+	if msg.SenderID == ctx.UserID {
+		http.Error(w, "Cannot comment on own message", http.StatusForbidden)
+		return
+	}
+
 	// Check if user is member of the conversation
 	isMember, err := rt.isConversationMember(msg.ConversationID, ctx.UserID)
 	if err != nil {

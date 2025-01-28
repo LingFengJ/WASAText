@@ -111,7 +111,56 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 				http.Error(w, "Recipient name required for new conversation", http.StatusBadRequest)
 				return
 			}
-			conversationID, err = rt.createNewIndividualChat(ctx.UserID, req.RecipientName)
+
+			// Check if a conversation already exists between the current user and the recipient
+			conversations, err := rt.db.GetUserConversations(ctx.UserID)
+			if err != nil {
+				ctx.Logger.WithError(err).Error("failed to get user conversations")
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			recipientID, err := rt.db.GetUserIDByUsername(req.RecipientName)
+			if err != nil {
+				ctx.Logger.WithError(err).Error("failed to get recipient ID")
+				http.Error(w, "Recipient not found", http.StatusNotFound)
+				return
+			}
+
+			var existingConversationID string
+			for _, conv := range conversations {
+				if conv.Type == database.ConversationTypeIndividual {
+					members, err := rt.db.GetConversationMembers(conv.ID)
+					if err != nil {
+						ctx.Logger.WithError(err).Error("failed to get conversation members")
+						continue
+					}
+
+					for _, member := range members {
+						if member.UserID == recipientID {
+							existingConversationID = conv.ID
+							break
+						}
+					}
+				}
+			}
+
+			if existingConversationID != "" {
+				conversationID = existingConversationID
+			} else {
+				// Create new individual chat
+				conversationID, err = rt.createNewIndividualChat(ctx.UserID, req.RecipientName)
+				if err != nil {
+					switch {
+					case errors.Is(err, database.ErrUserNotFound):
+						http.Error(w, "Recipient not found", http.StatusNotFound)
+					default:
+						ctx.Logger.WithError(err).Error("failed to create conversation")
+						http.Error(w, "Internal server error", http.StatusInternalServerError)
+					}
+					return
+				}
+			}
 		}
 		if err != nil {
 			switch {
@@ -135,6 +184,28 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 			http.Error(w, "Not authorized to send messages to this conversation", http.StatusForbidden)
 			return
 		}
+
+		// update conversation modified time
+		conv, err := rt.db.GetConversation(conversationID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrConversationNotFound):
+				http.Error(w, "Conversation not found", http.StatusNotFound)
+			default:
+				ctx.Logger.WithError(err).Error("failed to get conversation")
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		conv.ModifiedAt = time.Now()
+		err = rt.db.UpdateConversation(conv)
+		if err != nil {
+			ctx.Logger.WithError(err).Error("failed to update modified time")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 	}
 
 	username, err := rt.db.GetUsernameByIdentifier(ctx.UserID)
