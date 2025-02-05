@@ -34,8 +34,32 @@ export default {
                 this.$router.push(`/conversations/${data.conversationId}`);
 
             } catch (error) {
-                console.error('Error:', error);
-                this.error = 'Network error';
+                if (error.response) {
+                    const statusCode = error.response.status;
+                    switch (statusCode) {
+                        case 400:
+                            console.error('Bad request');
+                        case 401:
+                            console.error('Access Unauthorized:', error.response.data);
+                            break;
+                        case 403:
+                            console.error('Access Forbidden: You are not a member of the conversation', error.response.data);
+                            break;
+                        case 404:
+                            console.error('Recipient Not Found:', error.response.data);
+                            this.error = 'Recipient not found';
+                            break;
+                        case 500:
+                            console.error('Failed to get Coversation Internal Server Error:', error.response.data);
+                            this.error = 'Failed to get Coversation Internal Server Error';
+                            break;
+                        default:
+                            console.error(`Unhandled HTTP Error (${statusCode}):`, error.response.data);
+                    }
+                } else {
+                        console.error('Error sending message:', error);
+                        this.error = 'Network error';
+                    }
             } finally {
                 this.loading = false;
             }

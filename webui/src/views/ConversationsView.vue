@@ -23,7 +23,7 @@ export default {
     // Add click outside listener when component is created
     document.addEventListener('click', this.handleClickOutside);
   },
-  beforeDestroy() {
+  beforeUnmount() {
       // Clean up the listener when component is destroyed
       document.removeEventListener('click', this.handleClickOutside);
   },
