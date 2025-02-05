@@ -91,13 +91,13 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, ps
 				if status.UserID == msg.SenderID {
 					continue
 				}
-				if status.Status != "received" && status.Status != "read" {
+				if status.Status != StatusReceived && status.Status != StatusRead {
 					allReceived = false
 					break
 				}
 			}
 			// Update the message's aggregate status if needed
-			if allReceived && msg.Status == "sent" && msg.Status != "read" {
+			if allReceived && msg.Status == "sent" && msg.Status != StatusRead {
 				err = rt.db.UpdateMessageAggregateStatus(msg.ID, "received")
 				if err != nil {
 					ctx.Logger.WithError(err).Error("failed to update message aggregate status")

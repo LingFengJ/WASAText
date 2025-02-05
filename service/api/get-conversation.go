@@ -13,6 +13,8 @@ import (
 const (
 	ConversationTypeGroup      = "group"
 	ConversationTypeIndividual = "individual"
+	StatusRead                 = "read"
+	StatusReceived             = "received"
 )
 
 type ConversationResponse struct {
@@ -80,7 +82,7 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 	for i := range messages {
 		// Skip messages sent by the current user
 		if messages[i].SenderID != ctx.UserID {
-			err := rt.db.UpdateMessageStatus(messages[i].ID, ctx.UserID, "read")
+			err := rt.db.UpdateMessageStatus(messages[i].ID, ctx.UserID, StatusRead)
 			if err != nil {
 				ctx.Logger.WithError(err).Error("failed to update message status")
 				continue
@@ -114,22 +116,22 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 					continue
 				}
 				statusCount++
-				if status.Status != "read" {
+				if status.Status != StatusRead {
 					allRead = false
 				}
-				if status.Status != "received" && status.Status != "read" {
+				if status.Status != StatusReceived && status.Status != StatusRead {
 					allReceived = false
 				}
 			}
 
 			var newStatus string
 			if allRead && statusCount == receiverCount {
-				newStatus = "read"
+				newStatus = StatusRead
 			} else if allReceived && statusCount == receiverCount {
-				newStatus = "received"
+				newStatus = StatusReceived
 			}
 
-			if newStatus != "" && newStatus != messages[i].Status && messages[i].Status != "read" {
+			if newStatus != "" && newStatus != messages[i].Status && messages[i].Status != StatusRead {
 				err = rt.db.UpdateMessageAggregateStatus(messages[i].ID, newStatus)
 				if err != nil {
 					ctx.Logger.WithError(err).Error("failed to update message aggregate status")
@@ -138,31 +140,6 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 			}
 		}
 	}
-
-	// // For messages not sent by current user, mark as read
-	// err := rt.db.UpdateMessageStatus(messages[i].ID, ctx.UserID, "read")
-	// if err != nil {
-	// 	ctx.Logger.WithError(err).Error("failed to update message status")
-	// 	continue
-	// }
-
-	// // For group conversations, we need to check if all members have read
-	// if conversation.Type == database.ConversationTypeGroup {
-	// 	allRead := true
-	// 	for _, member := range members {
-	// 		if member.UserID != messages[i].SenderID &&
-	// 			member.LastReadAt.Before(messages[i].Timestamp) {
-	// 			allRead = false
-	// 			break
-	// 		}
-	// 	}
-	// 	if allRead {
-	// 		messages[i].Status = "read"
-	// 	} else {
-	// 		messages[i].Status = "received"
-	// 	}
-	// }
-	// }
 
 	// Get reactions for each message
 	for i := range messages {
