@@ -101,8 +101,35 @@ export default {
                 console.log('messages with reactions and replies:', this.messages);
 
             } catch (error) {
-                console.error('Error loading conversation:', error);
-                this.error = 'Network error';
+                if (error.response){    
+                    const statusCode = error.response.status;
+                    switch (statusCode) {
+                        case 400:
+                            console.error('Bad request');
+                        case 401:
+                            console.error('Access Unauthorized:', error.response.data);
+                            break;
+                        case 403:
+                            console.error('Access Forbidden: You are not a member of the conversation', error.response.data);
+                            this.error = "You are not a member or the conversation has been deleted";
+                            this.$router.push('/conversations'); 
+                            break;
+                        case 404:
+                            console.error('Recipient Not Found:', error.response.data);
+                            break;
+                        case 409:
+                            console.error('Conflict:', error.response.data);
+                            break;
+                        case 500:
+                            console.error('Failed to get Coversation Internal Server Error:', error.response.data);
+                            break;
+                        default:
+                            console.error(`Unhandled HTTP Error (${statusCode}):`, error.response.data);
+                    }
+                }else{
+                    console.error('Error loading conversation:', error);
+                    this.error = 'Failed to load conversation';
+                }
             } finally {
                 this.loading = false;
             }
