@@ -1,7 +1,7 @@
 {
-    "rewrites": [
-      { "source": "/(.*)", "destination": "/webui/dist/index.html" }
-    ],
-    "buildCommand": "cd webui && npm install && npm run build-prod",
-    "outputDirectory": "webui/dist"
-  }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "buildCommand": "cd webui && npm install && npm run build-prod",
+  "outputDirectory": "webui/dist"
+}
