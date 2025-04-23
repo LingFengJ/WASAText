@@ -1,5 +1,9 @@
 {
     "build": {
       "dockerfile": "Dockerfile.backend"
-    }
+    },
+    
+    "deploy": {
+        "healthCheck": false
+      }
   }
