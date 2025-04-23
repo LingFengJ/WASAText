@@ -134,9 +134,16 @@ func run() error {
 	// Apply CORS policy
 	router = applyCORSHandler(router)
 
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
 	// Create the API server
 	apiserver := http.Server{
-		Addr:              cfg.Web.APIHost,
+		// Addr:              cfg.Web.APIHost,
+		Addr:			   "0.0.0.0:" + port,
 		Handler:           router,
 		ReadTimeout:       cfg.Web.ReadTimeout,
 		ReadHeaderTimeout: cfg.Web.ReadTimeout,
