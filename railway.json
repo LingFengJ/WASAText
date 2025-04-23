@@ -1,9 +1,12 @@
 {
+    "$schema": "https://railway.app/railway.schema.json",
     "build": {
       "dockerfile": "Dockerfile.backend"
     },
-    
     "deploy": {
-        "healthCheck": false
-      }
+      "healthcheck": {
+        "enabled": false
+      },
+      "startCommand": "mkdir -p /app/data && /app/webapi"
+    }
   }
